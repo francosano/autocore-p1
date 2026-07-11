@@ -26,6 +26,9 @@ export const FUENTE_DEFS: FuenteDef[] = [
   { key: 'website',   label: 'Sitio Web', color: '#E0A23C', paid: false, selectable: true },
   { key: 'referido',  label: 'Referido',  color: '#57A6C9', paid: false, selectable: true },
   // ── ingestion / system sources (not manually selectable) ──
+  // fb_marketplace: canonical value written by the Marketplace Chrome
+  // extension when it syncs a Facebook Marketplace conversation into the CRM.
+  { key: 'fb_marketplace', label: 'FB Marketplace', color: '#1E4FA3', paid: false, selectable: false },
   { key: 'meta_ads',    label: 'Meta Ads',    color: '#5A8DEE', paid: true,  selectable: false },
   { key: 'facebook',    label: 'Facebook',    color: '#4267B2', paid: true,  selectable: false },
   { key: 'tiktok',      label: 'TikTok',      color: '#9B7DF0', paid: true,  selectable: false },

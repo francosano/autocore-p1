@@ -40,6 +40,7 @@ const ICONS: Record<string, ReactNode> = {
   recepcion: <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>,
   'walk-ins': <Icon><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></Icon>,
   campanas: <Icon><path d="M3 11l18-8-8 18-2.5-7.5L3 11z" /></Icon>,
+  marketplace: <Icon><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></Icon>,
   pendientes: <Icon><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></Icon>,
   alertas: <Icon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></Icon>,
   pulso: <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>,
@@ -60,9 +61,10 @@ const GROUPS: { title: string; items: { key: string; label: string; path: string
   {
     title: 'Captación',
     items: [
-      { key: 'recepcion', label: 'Recepción', path: '/crm/recepcion' },
-      { key: 'walk-ins',  label: 'Walk-ins',  path: '/crm/walk-ins' },
-      { key: 'campanas',  label: 'Campañas',  path: '/crm/campanas' },
+      { key: 'recepcion',   label: 'Recepción',   path: '/crm/recepcion' },
+      { key: 'walk-ins',    label: 'Walk-ins',    path: '/crm/walk-ins' },
+      { key: 'campanas',    label: 'Campañas',    path: '/crm/campanas' },
+      { key: 'marketplace', label: 'Marketplace', path: '/crm/marketplace' },
     ],
   },
   {

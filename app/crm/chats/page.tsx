@@ -1,4 +1,11 @@
-// TARGET: app/crm/chats/page.tsx
+// TARGET: autocore-p1/app/crm/chats/page.tsx
+// Multi-channel CRM chats: 'whatsapp' + 'fb_marketplace' (canal column).
+// WhatsApp replies go through the WhatsApp Worker (or a local insert while
+// it is unconfigured). Facebook Marketplace replies are QUEUED into
+// fb_outbox — the Chrome extension assists the human in sending them from
+// facebook.com and flips each row queued → sent (or failed + error).
+// Requires migrations/001-003 to be applied; FB features error at runtime
+// until then (the WhatsApp side keeps working).
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -33,7 +40,12 @@ const ETAPA_COLORS: Record<string, string> = {
 interface Conversation {
   id: string
   lead_id: string
-  wa_phone: string
+  wa_phone: string | null
+  canal?: 'whatsapp' | 'fb_marketplace'
+  fb_thread_id?: string | null
+  fb_listing_id?: string | null
+  fb_listing_title?: string | null
+  fb_buyer_name?: string | null
   status: string
   bot_active: boolean
   bot_mode: string
@@ -44,6 +56,33 @@ interface Conversation {
   last_message_preview: string
   crm_leads?: Lead
 }
+
+interface OutboxRow {
+  id: string
+  conversation_id: string
+  body: string
+  status: 'queued' | 'sent' | 'failed' | 'cancelled'
+  queued_by: string | null
+  queued_at: string
+  sent_at: string | null
+  error: string | null
+}
+
+// Channel chip colors (brand vars): blue FB / green WA.
+const CANAL_META = {
+  whatsapp:       { chip: 'WA', color: 'var(--brand-success)', label: 'WhatsApp' },
+  fb_marketplace: { chip: 'FB', color: 'var(--brand-primary)', label: 'Facebook Marketplace' },
+} as const
+const canalOf = (c: Conversation) => (c.canal === 'fb_marketplace' ? 'fb_marketplace' : 'whatsapp')
+const isFbConv = (c: Conversation | null) => !!c && canalOf(c) === 'fb_marketplace'
+// Display name / subtitle depend on the channel.
+const convTitle = (c: Conversation) => {
+  const l = c.crm_leads as any
+  if (l?.nombre) return l.nombre + ' ' + (l.apellidos || '')
+  return isFbConv(c) ? (c.fb_buyer_name || 'Comprador FB') : (c.wa_phone || '—')
+}
+const convSubtitle = (c: Conversation) =>
+  isFbConv(c) ? (c.fb_listing_title || 'Publicación de Marketplace') : (c.wa_phone || '—')
 
 interface Lead {
   id: string
@@ -98,6 +137,8 @@ export default function ChatsPage() {
   const [sending, setSending] = useState(false)
   const [inputText, setInputText] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'pending' | 'resolved'>('open')
+  const [filterCanal, setFilterCanal] = useState<'all' | 'whatsapp' | 'fb_marketplace'>('all')
+  const [outbox, setOutbox] = useState<OutboxRow[]>([])
   const [search, setSearch] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [userFullName, setUserFullName] = useState('')
@@ -142,6 +183,18 @@ export default function ChatsPage() {
 
   useEffect(() => { loadConversations() }, [loadConversations])
 
+  // Pending/failed outbox rows for an FB conversation (sent rows show up as
+  // real crm_mensajes once the extension delivers them, so they are excluded).
+  const loadOutbox = useCallback(async (convId: string) => {
+    const { data } = await (supabase
+      .from('fb_outbox')
+      .select('*')
+      .eq('conversation_id', convId)
+      .in('status', ['queued', 'failed'])
+      .order('queued_at', { ascending: true }) as any)
+    setOutbox(Array.isArray(data) ? data : [])
+  }, [])
+
   // Ref del id seleccionado para los handlers de realtime (sin re-suscribir el canal).
   useEffect(() => { selectedConvIdRef.current = selectedConv?.id || null }, [selectedConv])
 
@@ -182,12 +235,18 @@ export default function ChatsPage() {
           const c2 = payload.new as Conversation
           setConversations(prev => prev.map(c => c.id === c2.id ? { ...c, ...c2, crm_leads: c.crm_leads } : c))
         })
+        // Extension flips fb_outbox rows queued → sent/failed; refresh the
+        // rail when the open conversation's queue changes.
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fb_outbox' }, (payload: any) => {
+          const row = (payload.new || payload.old) as OutboxRow
+          if (row && selectedConvIdRef.current === row.conversation_id) loadOutbox(row.conversation_id)
+        })
         .subscribe()
     } catch (e) {
       console.log('Realtime subscription error:', e)
     }
     return () => { if (reloadTimer) clearTimeout(reloadTimer); if (channel) supabase.removeChannel(channel) }
-  }, [loadConversations])
+  }, [loadConversations, loadOutbox])
 
   // Load messages for selected conversation
   const loadMessages = useCallback(async (convId: string) => {
@@ -204,16 +263,38 @@ export default function ChatsPage() {
 
   const selectConversation = async (conv: Conversation) => {
     setSelectedConv(conv)
+    setOutbox([])
     await loadMessages(conv.id)
+    if (isFbConv(conv)) await loadOutbox(conv.id)
     // Mark as read
     await supabase.from('crm_conversations').update({ unread_count: 0 }).eq('id', conv.id)
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c))
   }
 
-  // Send a specific text (used by composer + by the Claudia suggestion rail)
+  // Cancel a queued FB reply before the extension picks it up.
+  const cancelOutbox = async (row: OutboxRow) => {
+    if (row.status !== 'queued' || !selectedConv) return
+    await (supabase.from('fb_outbox').update({ status: 'cancelled' }).eq('id', row.id) as any)
+    loadOutbox(selectedConv.id)
+  }
+
+  // Send a specific text. WhatsApp goes through the Worker (or local insert
+  // fallback); Facebook Marketplace replies are QUEUED into fb_outbox for the
+  // extension's human-in-the-loop send.
   const sendText = async (rawText: string) => {
     const text = (rawText || '').trim()
     if (!text || !selectedConv || sending) return
+
+    if (isFbConv(selectedConv)) {
+      const { error } = await (supabase.from('fb_outbox').insert({
+        conversation_id: selectedConv.id,
+        body: text,
+        status: 'queued',
+        queued_by: userId || null,
+      }) as any)
+      if (!error) loadOutbox(selectedConv.id)
+      return
+    }
 
     try {
       if (!WORKER_URL) throw new Error('WhatsApp Worker no configurado')
@@ -304,10 +385,13 @@ export default function ChatsPage() {
   const filtered = conversations.filter(c => {
     const lead = c.crm_leads as any
     const matchStatus = filterStatus === 'all' || c.status === filterStatus
-    const matchSearch = !search || (
-      (lead?.nombre + ' ' + lead?.apellidos + ' ' + c.wa_phone + ' ' + (lead?.modelo_interes || '')).toLowerCase().includes(search.toLowerCase())
-    )
-    return matchStatus && matchSearch
+    const matchCanal = filterCanal === 'all' || canalOf(c) === filterCanal
+    const haystack = [
+      lead?.nombre, lead?.apellidos, c.wa_phone, lead?.modelo_interes,
+      c.fb_buyer_name, c.fb_listing_title,
+    ].filter(Boolean).join(' ').toLowerCase()
+    const matchSearch = !search || haystack.includes(search.toLowerCase())
+    return matchStatus && matchCanal && matchSearch
   })
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0)
@@ -349,7 +433,7 @@ export default function ChatsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-inter), Inter, sans-serif', letterSpacing: '0.08em' }}>
-                  CHATS WHATSAPP
+                  CHATS
                   {totalUnread > 0 && (
                     <span style={{ marginLeft: '8px', background: 'var(--accent-solid)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '10px', fontWeight: 600 }}>
                       {totalUnread}
@@ -371,8 +455,26 @@ export default function ChatsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            {/* Status filters */}
+            {/* Channel tabs: WhatsApp | Facebook Marketplace | Todos */}
             <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+              {(['whatsapp', 'fb_marketplace', 'all'] as const).map(k => {
+                const active = filterCanal === k
+                const color = k === 'all' ? 'var(--accent-solid)' : CANAL_META[k].color
+                return (
+                  <button key={k} onClick={() => setFilterCanal(k)} style={{
+                    flex: 1, padding: '5px 4px', borderRadius: '6px', cursor: 'pointer',
+                    border: '1px solid ' + (active ? color : 'var(--border)'),
+                    background: active ? 'var(--bg-deep)' : 'transparent',
+                    color: active ? color : 'var(--text-muted)',
+                    fontSize: '10px', fontWeight: 700, fontFamily: 'var(--font-inter), Inter, sans-serif', letterSpacing: '0.05em',
+                  }}>
+                    {k === 'all' ? 'TODOS' : k === 'whatsapp' ? 'WHATSAPP' : 'FB MARKETPLACE'}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Status filters */}
+            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
               {(['all','open','pending','resolved'] as const).map(s => (
                 <button key={s} onClick={() => setFilterStatus(s)} style={{
                   flex: 1, padding: '4px', borderRadius: '6px', border: 'none', cursor: 'pointer',
@@ -397,6 +499,7 @@ export default function ChatsPage() {
                 const l = conv.crm_leads as any
                 const isSelected = selectedConv?.id === conv.id
                 const etapaColor = ETAPA_COLORS[l?.etapa || 'nuevo'] || 'var(--text-muted)'
+                const canal = CANAL_META[canalOf(conv)]
                 return (
                   <div
                     key={conv.id}
@@ -415,18 +518,24 @@ export default function ChatsPage() {
                         {/* Avatar */}
                         <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: etapaColor + '33', border: '2px solid ' + etapaColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <span style={{ fontSize: '13px', fontWeight: 600, color: etapaColor }}>
-                            {(l?.nombre || '?')[0].toUpperCase()}
+                            {convTitle(conv)[0].toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {l ? l.nombre + ' ' + l.apellidos : conv.wa_phone}
+                            {convTitle(conv)}
                           </div>
-                          <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{conv.wa_phone}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convSubtitle(conv)}</div>
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{fmtTime(conv.last_message_at)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          {/* Channel badge */}
+                          <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: canal.color, border: '1px solid ' + canal.color, borderRadius: '4px', padding: '0px 4px', lineHeight: '14px' }}>
+                            {canal.chip}
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{fmtTime(conv.last_message_at)}</span>
+                        </div>
                         {conv.unread_count > 0 && (
                           <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}>
                             {conv.unread_count}
@@ -472,22 +581,26 @@ export default function ChatsPage() {
                 </button>
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: (ETAPA_COLORS[lead?.etapa] || 'var(--text-muted)') + '33', border: '2px solid ' + (ETAPA_COLORS[lead?.etapa] || 'var(--text-muted)'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: '16px', fontWeight: 600, color: ETAPA_COLORS[lead?.etapa] || 'var(--text-muted)' }}>
-                    {(lead?.nombre || '?')[0].toUpperCase()}
+                    {convTitle(selectedConv)[0].toUpperCase()}
                   </span>
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {lead ? lead.nombre + ' ' + lead.apellidos : selectedConv.wa_phone}
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    {convTitle(selectedConv)}
+                    <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: CANAL_META[canalOf(selectedConv)].color, border: '1px solid ' + CANAL_META[canalOf(selectedConv)].color, borderRadius: '4px', padding: '0px 4px', lineHeight: '14px' }}>
+                      {CANAL_META[canalOf(selectedConv)].chip}
+                    </span>
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {selectedConv.wa_phone} · {lead?.modelo_interes || 'Modelo TBD'}
+                    {convSubtitle(selectedConv)}{!isFbConv(selectedConv) && ` · ${lead?.modelo_interes || 'Modelo TBD'}`}
                     {selectedConv.assigned_nombre && ` · Asignado: ${selectedConv.assigned_nombre}`}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {/* Bot toggle */}
+                {/* Bot toggle — WhatsApp only (no bot on Marketplace threads) */}
+                {!isFbConv(selectedConv) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: selectedConv.bot_active ? 'var(--accent-soft)' : 'var(--bg-deep)', borderRadius: '8px', border: '1px solid ' + (selectedConv.bot_active ? 'var(--accent-border)' : 'var(--border)') }}>
                   <span style={{ fontSize: '11px', color: selectedConv.bot_active ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 600 }}>
                     🤖 Claudia
@@ -507,6 +620,7 @@ export default function ChatsPage() {
                     }} />
                   </button>
                 </div>
+                )}
 
                 {/* View lead — deep-link al detalle en el pipeline (?lead=<id>) */}
                 {selectedConv.lead_id && (
@@ -611,12 +725,47 @@ export default function ChatsPage() {
                   )
                 })
               )}
+              {/* FB outbox rail: replies queued for the extension (queued/failed).
+                  Sent replies arrive as real crm_mensajes and drop off this list. */}
+              {isFbConv(selectedConv) && outbox.map(row => (
+                <div key={row.id} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ maxWidth: '65%' }}>
+                    <div style={{
+                      padding: '10px 14px', borderRadius: '16px 4px 16px 16px',
+                      background: 'var(--bg-card)', color: 'var(--text-primary)',
+                      border: '1px dashed ' + (row.status === 'failed' ? 'var(--danger)' : 'var(--brand-primary)'),
+                      fontSize: '13px', lineHeight: 1.5, opacity: 0.92,
+                    }}>
+                      {row.body}
+                    </div>
+                    <div style={{ fontSize: '10px', marginTop: '3px', textAlign: 'right', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                      {row.status === 'queued' ? (
+                        <>
+                          <span style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>En cola — la extensión la enviará desde Facebook</span>
+                          <button onClick={() => cancelOutbox(row)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '10px', textDecoration: 'underline', padding: 0 }}>
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                          Falló{row.error ? ': ' + row.error : ''} — reintenta enviándola de nuevo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-              {selectedConv.bot_active && (
+              {isFbConv(selectedConv) && (
+                <div style={{ fontSize: '11px', color: 'var(--brand-primary)', marginBottom: '8px' }}>
+                  Marketplace: las respuestas se ponen en cola y un humano las envía desde Facebook con la extensión.
+                </div>
+              )}
+              {!isFbConv(selectedConv) && selectedConv.bot_active && (
                 <div style={{ fontSize: '11px', color: 'var(--accent)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   🤖 Claudia está activa — tus mensajes también se enviarán junto a los del bot
                 </div>
@@ -629,7 +778,7 @@ export default function ChatsPage() {
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
                 <textarea
                   style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', resize: 'none', minHeight: '44px', maxHeight: '120px', lineHeight: 1.5, fontFamily: 'inherit' }}
-                  placeholder="Escribe un mensaje..."
+                  placeholder={isFbConv(selectedConv) ? 'Escribe una respuesta (se enviará desde Facebook)...' : 'Escribe un mensaje...'}
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
@@ -652,8 +801,8 @@ export default function ChatsPage() {
           <div className="chx-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>WhatsApp CRM</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Selecciona una conversación para comenzar</div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Chats CRM</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>WhatsApp y Facebook Marketplace — selecciona una conversación</div>
             </div>
           </div>
         )}
@@ -671,7 +820,10 @@ export default function ChatsPage() {
 
             {[
               ['Nombre', lead.nombre + ' ' + lead.apellidos],
-              ['Teléfono', lead.telefono],
+              ['Canal', CANAL_META[canalOf(selectedConv)].label],
+              ...(isFbConv(selectedConv)
+                ? [['Publicación', selectedConv.fb_listing_title || '—'] as [string, string]]
+                : [['Teléfono', lead.telefono] as [string, string]]),
               ['Modelo', lead.modelo_interes || '—'],
               ['Etapa', lead.etapa],
               ['Fuente', fuenteLabel(lead.fuente)],
@@ -683,7 +835,8 @@ export default function ChatsPage() {
               </div>
             ))}
 
-            {/* Bot status */}
+            {/* Bot status — WhatsApp only */}
+            {!isFbConv(selectedConv) && (
             <div style={{ marginTop: '16px', padding: '12px', background: selectedConv.bot_active ? 'var(--accent-soft)' : 'var(--bg-deep)', borderRadius: '8px', border: '1px solid ' + (selectedConv.bot_active ? 'var(--accent-soft)' : 'var(--border)') }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: selectedConv.bot_active ? 'var(--accent)' : 'var(--text-muted)', marginBottom: '4px' }}>
                 🤖 {selectedConv.bot_active ? 'Bot Activo' : 'Bot Inactivo'}
@@ -698,6 +851,7 @@ export default function ChatsPage() {
                 {selectedConv.bot_active ? 'Desactivar Bot' : 'Activar Bot'}
               </button>
             </div>
+            )}
 
             {/* Quick actions */}
             <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>

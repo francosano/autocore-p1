@@ -280,7 +280,7 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const { data: convs, error: ce } = await withTimeout(
-            supabase.from('crm_conversations').select('id,lead_id,wa_phone,bot_active,bot_mode').eq('lead_id', lead.id).limit(1), 12000
+            supabase.from('crm_conversations').select('id,lead_id,wa_phone,canal,fb_listing_title,fb_buyer_name,bot_active,bot_mode').eq('lead_id', lead.id).limit(1), 12000
           )
           if (ce) throw ce
           const c = convs?.[0] || null
@@ -343,9 +343,28 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
       setLeadConv((p: any) => p ? { ...p, bot_active: active } : p)
     }
 
+    // FB Marketplace conversations queue replies into fb_outbox (the Chrome
+    // extension sends them from facebook.com). WhatsApp sending stays disabled
+    // until the p1 WhatsApp Worker exists.
+    const isFbLeadConv = leadConv?.canal === 'fb_marketplace'
+
     const sendChat = async () => {
       const t = chatText.trim()
       if (!t || !leadConv || chatSending) return
+      if (isFbLeadConv) {
+        setChatSending(true); setChatErr('')
+        const { error } = await (supabase.from('fb_outbox').insert({
+          conversation_id: leadConv.id,
+          body: t,
+          status: 'queued',
+          queued_by: userId || null,
+        }) as any)
+        setChatSending(false)
+        if (error) { setChatErr('No se pudo poner en cola: ' + error.message); return }
+        setChatText('')
+        setChatErr('Respuesta en cola — la extensión la enviará desde Facebook. Revisa el estado en CRM → Chats.')
+        return
+      }
       setChatErr('Función no disponible: el envío de WhatsApp aún no está configurado para este entorno.')
     }
 
@@ -652,7 +671,7 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
             background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
             padding: '0 24px', display: 'flex', gap: '0', flexShrink: 0,
           }}>
-            {([['info','Principal'],['actividad','Actividad'],['cita','Cita'],['conversacion','WhatsApp'],['editar','Editar']] as [string,string][]).map(([key, label]) => (
+            {([['info','Principal'],['actividad','Actividad'],['cita','Cita'],['conversacion','Conversación'],['editar','Editar']] as [string,string][]).map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key as any)} style={{
                 padding: '12px 20px', border: 'none', background: 'transparent', cursor: 'pointer',
                 fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-inter), Inter, sans-serif',
@@ -969,12 +988,21 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
             {activeTab === 'conversacion' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {leadConv ? (leadConv.bot_active ? 'Claudia responde automáticamente' : 'En control manual · Claudia en pausa') : 'Sin conversación de WhatsApp'}
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {leadConv && (
+                      <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: isFbLeadConv ? 'var(--brand-primary)' : 'var(--brand-success)', border: '1px solid ' + (isFbLeadConv ? 'var(--brand-primary)' : 'var(--brand-success)'), borderRadius: '4px', padding: '0px 4px', lineHeight: '14px' }}>
+                        {isFbLeadConv ? 'FB' : 'WA'}
+                      </span>
+                    )}
+                    {leadConv
+                      ? (isFbLeadConv
+                        ? ('Facebook Marketplace' + (leadConv.fb_listing_title ? ' · ' + leadConv.fb_listing_title : ''))
+                        : (leadConv.bot_active ? 'Claudia responde automáticamente' : 'En control manual · Claudia en pausa'))
+                      : 'Sin conversación'}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button style={{ ...S.btnSecondary, fontSize: '13px' }} onClick={loadConv}>↻</button>
-                    {leadConv && (leadConv.bot_active
+                    {leadConv && !isFbLeadConv && (leadConv.bot_active
                       ? <button style={{ ...S.btnSecondary, fontSize: '13px', color: 'var(--warn)' }} onClick={() => setBot(false)}>Tomar control</button>
                       : <button style={{ ...S.btnSecondary, fontSize: '13px', color: 'var(--ok)' }} onClick={() => setBot(true)}>Reactivar IA</button>)}
                   </div>
@@ -982,7 +1010,7 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
 
                 <div ref={convScrollRef} style={{ flex: 1, overflowY: 'auto', padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-page)' }}>
                   {convLoading ? <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Cargando…</div>
-                    : !leadConv ? <div style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', marginTop: '40px' }}>{chatErr || 'Este lead aún no tiene conversación de WhatsApp. Aparecerá aquí cuando el cliente escriba.'}</div>
+                    : !leadConv ? <div style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', marginTop: '40px' }}>{chatErr || 'Este lead aún no tiene conversación. Aparecerá aquí cuando el cliente escriba.'}</div>
                     : leadMsgs.length === 0 ? <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Sin mensajes.</div>
                     : leadMsgs.map((m: any) => {
                       const out = m.direction === 'out', bot = m.is_bot
@@ -1006,21 +1034,29 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
                   <div style={{ borderTop: '1px solid var(--border)', padding: '12px 24px', background: 'var(--bg-card)' }}>
                     {chatErr && <div style={{ fontSize: '12px', color: 'var(--danger)', marginBottom: '8px' }}>{chatErr}</div>}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-                      <textarea value={chatText} onChange={e => setChatText(e.target.value)} placeholder="Escribe un mensaje al cliente por WhatsApp…" rows={2}
+                      <textarea value={chatText} onChange={e => setChatText(e.target.value)} placeholder={isFbLeadConv ? 'Escribe una respuesta (se enviará desde Facebook)…' : 'Escribe un mensaje al cliente por WhatsApp…'} rows={2}
                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
                         style={{ ...S.input, flex: 1, resize: 'none' }} />
-                      <input id="crm-wa-file" type="file" accept="application/pdf,image/jpeg,image/png" style={{ display: 'none' }}
-                        onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = '' }} />
-                      <button onClick={() => document.getElementById('crm-wa-file')?.click()} disabled={chatSending} title="Adjuntar PDF o imagen"
-                        style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '16px', cursor: 'pointer', opacity: chatSending ? 0.5 : 1 }}>
-                        📎
-                      </button>
+                      {!isFbLeadConv && (
+                        <>
+                          <input id="crm-wa-file" type="file" accept="application/pdf,image/jpeg,image/png" style={{ display: 'none' }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) sendMedia(f); e.currentTarget.value = '' }} />
+                          <button onClick={() => document.getElementById('crm-wa-file')?.click()} disabled={chatSending} title="Adjuntar PDF o imagen"
+                            style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '16px', cursor: 'pointer', opacity: chatSending ? 0.5 : 1 }}>
+                            📎
+                          </button>
+                        </>
+                      )}
                       <button onClick={sendChat} disabled={!chatText.trim() || chatSending}
                         style={{ padding: '9px 16px', borderRadius: '8px', border: 'none', background: 'var(--accent-solid)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: (!chatText.trim() || chatSending) ? 0.5 : 1 }}>
-                        {chatSending ? '…' : 'Enviar'}
+                        {chatSending ? '…' : (isFbLeadConv ? 'Poner en cola' : 'Enviar')}
                       </button>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Al enviar, Claudia se pausa y tú tomas la conversación.</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      {isFbLeadConv
+                        ? 'Marketplace: la respuesta queda en cola y un humano la envía desde Facebook con la extensión.'
+                        : 'Al enviar, Claudia se pausa y tú tomas la conversación.'}
+                    </div>
                   </div>
                 )}
               </div>
