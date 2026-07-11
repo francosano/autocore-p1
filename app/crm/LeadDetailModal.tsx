@@ -265,7 +265,8 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
     const [composeResultado, setComposeResultado] = useState('')
 
     // ── Conversación de WhatsApp embebida en el lead ──
-    const CRM_BOT = 'https://autocore-crm-bot.sano-franco.workers.dev'
+    // Reading messages works against the DB; SENDING requires a WhatsApp
+    // Worker, which is not configured in this fork yet (see tenant.config.ts).
     const [leadConv, setLeadConv] = useState<any>(null)
     const [leadMsgs, setLeadMsgs] = useState<any[]>([])
     const [convLoading, setConvLoading] = useState(false)
@@ -349,54 +350,12 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
     const sendChat = async () => {
       const t = chatText.trim()
       if (!t || !leadConv || chatSending) return
-      setChatSending(true); setChatErr('')
-      try {
-        const res = await fetch(CRM_BOT + '/send', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversation_id: leadConv.id, text: t, sender_name: (crmUsers.find(u => u.user_id === userId)?.full_name || 'Equipo') }),
-        })
-        const j = await res.json().catch(() => ({}))
-        if (!j.ok) {
-          setChatErr(j.error === 'wa_send_failed'
-            ? 'No se pudo enviar: la ventana de 24h de WhatsApp está cerrada. Espera a que el cliente escriba o usa una plantilla.'
-            : 'No se pudo enviar el mensaje.')
-          setChatSending(false); return
-        }
-        setChatText('')
-        setLeadConv((p: any) => p ? { ...p, bot_active: false } : p)
-        await loadConv()
-      } catch { setChatErr('Error de red al enviar.') }
-      setChatSending(false)
+      setChatErr('Función no disponible: el envío de WhatsApp aún no está configurado para este entorno.')
     }
 
     const sendMedia = async (file: File) => {
       if (!file || !leadConv || chatSending) return
-      const okTypes = ['application/pdf', 'image/jpeg', 'image/png']
-      if (!okTypes.includes(file.type)) { setChatErr('Solo se pueden enviar PDF, JPG o PNG.'); return }
-      const isImg = file.type.startsWith('image/')
-      const maxMB = isImg ? 5 : 90
-      if (file.size > maxMB * 1024 * 1024) { setChatErr('El archivo supera el límite de WhatsApp (' + maxMB + ' MB).'); return }
-      setChatSending(true); setChatErr('')
-      try {
-        const fd = new FormData()
-        fd.append('file', file)
-        fd.append('filename', file.name)
-        fd.append('caption', chatText.trim())
-        fd.append('conversation_id', leadConv.id)
-        fd.append('sender_name', crmUsers.find(u => u.user_id === userId)?.full_name || 'Equipo')
-        const res = await fetch(CRM_BOT + '/send-media', { method: 'POST', body: fd })
-        const j = await res.json().catch(() => ({}))
-        if (!j.ok) {
-          setChatErr(j.error === 'wa_send_failed'
-            ? 'No se pudo enviar: la ventana de 24h de WhatsApp está cerrada. Espera a que el cliente escriba o usa una plantilla.'
-            : 'No se pudo enviar el archivo.')
-          setChatSending(false); return
-        }
-        setChatText('')
-        setLeadConv((p: any) => p ? { ...p, bot_active: false } : p)
-        await loadConv()
-      } catch { setChatErr('Error de red al enviar el archivo.') }
-      setChatSending(false)
+      setChatErr('Función no disponible: el envío de WhatsApp aún no está configurado para este entorno.')
     }
 
     const sendCompose = async () => {
@@ -453,13 +412,6 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
         }).eq('id', lead.id)
         if (error) throw error
         await recomputeHeat()
-        // Avisar por WhatsApp al asesor si se asignó o cambió el asignado.
-        if (editForm.asignado_a && editForm.asignado_a !== prevAssigned) {
-          fetch(CRM_BOT + '/assign-notify', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lead_id: lead.id, user_id: editForm.asignado_a }),
-          }).catch(() => {})
-        }
         setActiveTab('info'); onChanged()
       } catch (e: any) {
         setSaveErr('No se pudo guardar (' + (e?.message || 'error') + '). Revisa los campos e intenta de nuevo.')
@@ -534,29 +486,24 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
       onClose(); onChanged()
     }
 
-    // Marca el lead como contactado: detiene la escalación automática al manager.
-    // #3 — con try/catch + timeout + feedback en pantalla. Ya NO cierra a ciegas
-    // ni falla en silencio: el cron del worker escala solo si contacted_at IS NULL,
-    // así que es crítico confirmar que el sello quedó estampado.
+    // Marca el lead como contactado. En este fork no hay Worker de escalación,
+    // así que el sello se estampa directamente en crm_leads.
     const markContacted = async () => {
       if (marking) return
       setMarking(true); setMarkErr('')
       try {
         const now = new Date().toISOString()
         const byNombre = crmUsers.find(u => u.user_id === userId)?.full_name || 'Equipo'
-        const res = await withTimeout(fetch(CRM_BOT + '/mark-contacted', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lead_id: lead.id,
-            user_id: userId || null,
-            sender_name: byNombre,
-            heat: calcHeat({ ...lead, ultimo_contacto: now }),
-          }),
-        }), 15000)
-        const j = await res.json().catch(() => ({}))
-        if (!j.ok) throw new Error(j.error || 'error')
+        const { error } = await withTimeout(supabase.from('crm_leads').update({
+          contacted_at: now,
+          contacted_by: userId || null,
+          contacted_by_nombre: byNombre,
+          ultimo_contacto: now,
+          heat_score: calcHeat({ ...lead, ultimo_contacto: now }),
+        }).eq('id', lead.id), 15000)
+        if (error) throw error
         setContactedOk(true)
-        setContactedInfo({ at: j.contacted_at || now, by: byNombre })
+        setContactedInfo({ at: now, by: byNombre })
         onChanged()
       } catch (e: any) {
         setMarkErr('No se pudo marcar como contactado (' + (e?.message || 'error') + '). Intenta de nuevo.')

@@ -6,9 +6,11 @@ import { supabase } from '../../supabase'
 import CrmShell from '../CrmShell'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { fuenteLabel } from '../fuentes'
+import { TENANT } from '../../tenant.config'
 
-const WORKER_URL = 'https://autocore-whatsapp.sano-franco.workers.dev'
-const AI_WORKER = 'https://autocore-comprobante.sano-franco.workers.dev'
+// Empty = WhatsApp send disabled; messages fall back to a local DB insert
+// until the p1 WhatsApp Worker is deployed.
+const WORKER_URL: string = TENANT.workers.whatsapp
 
 const ETAPAS_LIST = [
   { key: 'nuevo',             label: 'Nuevo Lead' },
@@ -21,14 +23,6 @@ const ETAPAS_LIST = [
   { key: 'cerrado_perdido',   label: 'Perdido' },
 ]
 const etapaLabel = (k: string) => ETAPAS_LIST.find(e => e.key === k)?.label || k
-
-interface Suggestion {
-  mensaje: string
-  intencion: number
-  nivel: string
-  etapa_sugerida: string
-  motivo: string
-}
 
 const ETAPA_COLORS: Record<string, string> = {
   nuevo: '#8A93A0', contactado: '#5A8DEE', cita_agendada: '#9B7DF0',
@@ -109,9 +103,6 @@ export default function ChatsPage() {
   const [userFullName, setUserFullName] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const selectedConvIdRef = useRef<string | null>(null)
-  const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
-  const [suggLoading, setSuggLoading] = useState(false)
-  const [applyingStage, setApplyingStage] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -213,7 +204,6 @@ export default function ChatsPage() {
 
   const selectConversation = async (conv: Conversation) => {
     setSelectedConv(conv)
-    setSuggestion(null)
     await loadMessages(conv.id)
     // Mark as read
     await supabase.from('crm_conversations').update({ unread_count: 0 }).eq('id', conv.id)
@@ -226,6 +216,7 @@ export default function ChatsPage() {
     if (!text || !selectedConv || sending) return
 
     try {
+      if (!WORKER_URL) throw new Error('WhatsApp Worker no configurado')
       const res = await fetch(WORKER_URL + '/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -285,84 +276,16 @@ export default function ChatsPage() {
     setSending(false)
   }
 
-  // Send the AI-suggested message in one tap
-  const sendSuggestion = async () => {
-    if (!suggestion || !selectedConv || sending) return
-    setSending(true)
-    await sendText(suggestion.mensaje)
-    setSuggestion(null)
-    setSending(false)
-  }
-
-  // ─── CLAUDIA SUGGESTION (Andy Elliott) — suggest-first, agent confirms ─────
-  const generateSuggestion = async () => {
-    if (!selectedConv || suggLoading) return
-    setSuggLoading(true)
-    setSuggestion(null)
-    const l = selectedConv.crm_leads as any
-    const recientes = messages.slice(-14).map(m => {
-      const who = m.direction === 'in' ? 'CLIENTE' : (m.is_bot ? 'CLAUDIA' : 'ASESOR')
-      return who + ': ' + (m.content || (m.media_url ? '[nota de voz]' : ''))
-    }).join('\n')
-    const etapasTxt = ETAPAS_LIST.map(e => e.key).join(', ')
-    const prompt =
-      'Eres Claudia, asesora de ventas de Kia Maracay (Venezuela), entrenada con el metodo de Andy Elliott. ' +
-      'Analiza esta conversacion de WhatsApp y prepara la SIGUIENTE respuesta para enviar al cliente.\n\n' +
-      'LEAD: ' + (l ? (l.nombre + ' ' + l.apellidos) : selectedConv.wa_phone) + '\n' +
-      'Modelo de interes: ' + (l?.modelo_interes || 'sin definir') + '\n' +
-      'Etapa actual: ' + etapaLabel(l?.etapa || 'nuevo') + ' (' + (l?.etapa || 'nuevo') + ')\n' +
-      'Heat score: ' + (l?.heat_score ?? '—') + '\n' +
-      'Fuente: ' + (l?.fuente || '—') + '\n\n' +
-      'CONVERSACION RECIENTE:\n' + (recientes || '(sin mensajes aun)') + '\n\n' +
-      'Responde SOLO con un objeto JSON valido, sin texto adicional ni markdown, con esta forma exacta:\n' +
-      '{"mensaje": "respuesta lista para enviar por WhatsApp, en espanol venezolano, calida, persuasiva, una sola objecion a la vez, termina con una pregunta de avance", ' +
-      '"intencion": numero del 0 al 100, ' +
-      '"nivel": "alta" | "media" | "baja", ' +
-      '"etapa_sugerida": una de [' + etapasTxt + '] o "" si no debe cambiar, ' +
-      '"motivo": "razon breve del cambio de etapa o del enfoque"}'
-    try {
-      const res = await fetch(AI_WORKER, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'chat', messages: [{ role: 'user', content: prompt }] }),
-      })
-      const data = await res.json()
-      let txt = (data.content?.[0]?.text || data.response || '').trim()
-      txt = txt.replace(/```json/gi, '').replace(/```/g, '').trim()
-      const first = txt.indexOf('{'); const last = txt.lastIndexOf('}')
-      if (first >= 0 && last > first) txt = txt.slice(first, last + 1)
-      const parsed = JSON.parse(txt)
-      setSuggestion({
-        mensaje: String(parsed.mensaje || '').trim(),
-        intencion: Math.max(0, Math.min(100, Number(parsed.intencion) || 0)),
-        nivel: String(parsed.nivel || 'media'),
-        etapa_sugerida: ETAPAS_LIST.some(e => e.key === parsed.etapa_sugerida) ? parsed.etapa_sugerida : '',
-        motivo: String(parsed.motivo || '').trim(),
-      })
-    } catch (e) {
-      setSuggestion({ mensaje: '', intencion: 0, nivel: 'media', etapa_sugerida: '', motivo: 'Error generando la sugerencia. Intenta de nuevo.' })
-    }
-    setSuggLoading(false)
-  }
-
-  // Apply the AI-suggested stage (agent confirms). The etapa-log trigger records it.
-  const applyStage = async (etapa: string) => {
-    if (!selectedConv || !etapa || applyingStage) return
-    setApplyingStage(true)
-    await supabase.from('crm_leads').update({ etapa, updated_at: new Date().toISOString() }).eq('id', selectedConv.lead_id)
-    setSelectedConv(prev => prev ? { ...prev, crm_leads: { ...(prev.crm_leads as any), etapa } } : prev)
-    setConversations(prev => prev.map(c => c.id === selectedConv.id ? { ...c, crm_leads: { ...(c.crm_leads as any), etapa } } : c))
-    setSuggestion(prev => prev ? { ...prev, etapa_sugerida: '' } : prev)
-    setApplyingStage(false)
-  }
-
   // Toggle bot
   const toggleBot = async (active: boolean) => {
     if (!selectedConv) return
-    await fetch(WORKER_URL + '/bot/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation_id: selectedConv.id, bot_active: active, bot_mode: active ? 'full' : 'off' })
-    }).catch(() => {})
+    if (WORKER_URL) {
+      await fetch(WORKER_URL + '/bot/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: selectedConv.id, bot_active: active, bot_mode: active ? 'full' : 'off' })
+      }).catch(() => {})
+    }
     // Also update Supabase directly
     await supabase.from('crm_conversations').update({ bot_active: active, bot_mode: active ? 'full' : 'off' }).eq('id', selectedConv.id)
     setSelectedConv(prev => prev ? { ...prev, bot_active: active, bot_mode: active ? 'full' : 'off' } : null)
@@ -690,74 +613,6 @@ export default function ChatsPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
-
-            {/* Claudia suggestion rail */}
-            {selectedConv.status !== 'resolved' && (
-              <div style={{ padding: '10px 16px 0', background: 'var(--bg-card)' }}>
-                {!suggestion && !suggLoading && (
-                  <button
-                    onClick={generateSuggestion}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 12px', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    ✨ Sugerir respuesta (Claudia)
-                  </button>
-                )}
-                {suggLoading && (
-                  <div style={{ padding: '10px 12px', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>
-                    ✨ Claudia está analizando la conversación...
-                  </div>
-                )}
-                {suggestion && (
-                  <div style={{ background: 'var(--bg-deep)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: '0 8px 8px 0', padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent)' }}>🤖 Sugerencia de Claudia · Andy Elliott</span>
-                      <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
-                        background: suggestion.nivel === 'alta' ? 'rgba(240,85,106,0.14)' : suggestion.nivel === 'baja' ? 'rgba(87,166,201,0.14)' : 'rgba(230,162,60,0.14)',
-                        color: suggestion.nivel === 'alta' ? 'var(--heat-hot)' : suggestion.nivel === 'baja' ? 'var(--heat-cold)' : 'var(--heat-warm)' }}>
-                        🔥 Intención {suggestion.intencion} · {suggestion.nivel}
-                      </span>
-                    </div>
-                    {suggestion.mensaje ? (
-                      <div style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{suggestion.mensaje}</div>
-                    ) : (
-                      <div style={{ fontSize: '12px', color: 'var(--heat-hot)' }}>{suggestion.motivo || 'Sin sugerencia.'}</div>
-                    )}
-                    {suggestion.etapa_sugerida && suggestion.etapa_sugerida !== (selectedConv.crm_leads as any)?.etapa && (
-                      <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Sugiere mover a <strong style={{ color: 'var(--text-secondary)' }}>{etapaLabel(suggestion.etapa_sugerida)}</strong>
-                        {suggestion.motivo && ' · ' + suggestion.motivo}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
-                      {suggestion.mensaje && (
-                        <button onClick={sendSuggestion} disabled={sending}
-                          style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: 'var(--accent-solid)', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '11px', fontWeight: 600, cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
-                          ➤ Enviar texto
-                        </button>
-                      )}
-                      <button disabled title="Requiere Claudia (autocore-crm-bot) desplegada + ElevenLabs"
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '11px', fontWeight: 600, cursor: 'not-allowed' }}>
-                        🎙 Enviar como voz <span style={{ fontSize: '9px', opacity: 0.7 }}>(pronto)</span>
-                      </button>
-                      {suggestion.etapa_sugerida && suggestion.etapa_sugerida !== (selectedConv.crm_leads as any)?.etapa && (
-                        <button onClick={() => applyStage(suggestion.etapa_sugerida)} disabled={applyingStage}
-                          style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)', borderRadius: '7px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                          🔄 Mover a {etapaLabel(suggestion.etapa_sugerida)}
-                        </button>
-                      )}
-                      <button onClick={() => setSuggestion(null)}
-                        style={{ padding: '6px 10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                        Descartar
-                      </button>
-                      <button onClick={generateSuggestion} disabled={suggLoading}
-                        style={{ padding: '6px 10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                        Regenerar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Input */}
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>

@@ -23,9 +23,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../supabase'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
-import { ArrowLeft, Camera, Search, Check, X, Package, ChevronRight, RefreshCw } from 'lucide-react'
-
-const COMPROBANTE_WORKER = 'https://autocore-comprobante.sano-franco.workers.dev'
+import { ArrowLeft, Search, Check, X, Package, ChevronRight, RefreshCw } from 'lucide-react'
 
 const KIA_MODELS = [
   'SONET', 'SELTOS', 'SELTOS AT GT', 'SPORTAGE 4X2 GT', 'SPORTAGE 4X2 GTL',
@@ -116,240 +114,6 @@ const s: any = {
   secBtn: { width: '100%', padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginTop: 8 },
 
   draftCard: (state: string) => ({ border: `1px solid ${state === 'dup' ? '#e0894a55' : 'var(--border)'}`, borderRadius: 11, padding: 13, marginBottom: 11, background: state === 'dup' ? 'rgba(230,137,74,0.06)' : 'var(--bg-deep)' }),
-}
-
-// ── one scan:'auto' read, abort-guarded for flaky VE internet ────────────────
-async function scanAuto(file: File): Promise<any[]> {
-  const b64 = await new Promise<string>((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = ev => resolve(((ev.target?.result as string) || '').split(',')[1] || '')
-    r.onerror = () => reject(r.error)
-    r.readAsDataURL(file)
-  })
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 60000)
-  try {
-    const res = await fetch(COMPROBANTE_WORKER, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      signal: ctrl.signal,
-      body: JSON.stringify({ scan: 'auto', base64: b64, mediaType: isPdf ? 'application/pdf' : (file.type || 'image/jpeg'), isPdf }),
-    })
-    const json = await res.json().catch(() => null)
-    return Array.isArray(json?.documents) ? json.documents : []
-  } finally { clearTimeout(timer) }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// REGISTER FROM FACTURA — scan, review unit drafts, bulk insert
-// ═══════════════════════════════════════════════════════════════════════════
-function RegistrarModal({ userId, canFinance, onDone, onCancel }: {
-  userId: string | null, canFinance: boolean, onDone: (n: number) => void, onCancel: () => void
-}) {
-  const [phase, setPhase] = useState<'pick' | 'scanning' | 'review' | 'saving'>('pick')
-  const [drafts, setDrafts] = useState<any[]>([])   // { state:'new'|'dup', ...fields }
-  const [error, setError] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  async function handleFile(file: File | undefined) {
-    if (!file) return
-    setError(''); setPhase('scanning')
-    try {
-      const docs = await scanAuto(file)
-      const compras = docs.filter((d: any) => d?.type === 'factura_compra').map((d: any) => d.extracted || {})
-      if (compras.length === 0) {
-        setError('No se detectaron facturas de compra de KIA en el archivo. Verifica que sea la factura correcta.')
-        setPhase('pick'); return
-      }
-      // Build drafts; flag VINs already in inventory.
-      const vins = compras.map((c: any) => (c.vin || '').trim().toUpperCase()).filter(Boolean)
-      let existing: string[] = []
-      if (vins.length) {
-        const { data } = await supabase.from('inventory_units').select('vin').in('vin', vins)
-        existing = (data || []).map((r: any) => (r.vin || '').toUpperCase())
-      }
-      const ds = compras.map((c: any) => {
-        const vin = (c.vin || '').trim().toUpperCase()
-        return {
-          state: vin && existing.includes(vin) ? 'dup' : 'new',
-          vin,
-          modelo: normalizeModelo(c.vehiculo_modelo),
-          año: Number(c.vehiculo_año) || new Date().getFullYear(),
-          color: (c.vehiculo_color || '').toUpperCase(),
-          motor_serial: c.motor_serial || '',
-          placa: c.vehiculo_placa || '',
-          factura_compra_num: c.factura_compra_numero || '',
-          factura_compra_control_num: c.factura_compra_control || '',
-          factura_compra_fecha: c.factura_compra_fecha || todayISO(),
-          costo_unidad_usd: c.factura_compra_body_neto ?? '',
-          costo_placa_certificado_usd: c.factura_compra_placa ?? '',
-          costo_total_factura_usd: c.factura_compra_total ?? '',
-          notas: '',
-        }
-      })
-      setDrafts(ds); setPhase('review')
-    } catch {
-      setError('Error al leer el archivo. Revisa tu conexión e intenta de nuevo.')
-      setPhase('pick')
-    }
-  }
-
-  const setDraft = (i: number, k: string, v: any) => setDrafts(ds => ds.map((d, j) => j === i ? { ...d, [k]: v } : d))
-
-  const toSave = drafts.filter(d => d.state === 'new')
-  const dups = drafts.filter(d => d.state === 'dup').length
-
-  async function handleSaveAll() {
-    setError('')
-    // Validate the ones we'll insert.
-    for (const d of toSave) {
-      if (!d.vin || d.vin.length < 11) { setError(`VIN inválido en una unidad (${d.modelo || 's/modelo'}). Corrígelo o quítalo.`); return }
-      if (!d.modelo) { setError('Falta el modelo en una unidad.'); return }
-      if (!d.factura_compra_num) { setError('Falta el número de factura en una unidad.'); return }
-    }
-    if (toSave.length === 0) { setError('No hay unidades nuevas para registrar.'); return }
-    setPhase('saving')
-    let ok = 0
-    const fails: string[] = []
-    for (const d of toSave) {
-      // Full key set on every row (avoids Supabase batch union-of-keys NULL bug; here we insert one at a time for per-unit isolation).
-      const payload: any = {
-        vin: d.vin,
-        modelo: d.modelo,
-        año: Number(d.año),
-        color: d.color || null,
-        motor_serial: d.motor_serial || null,
-        placa: d.placa || null,
-        factura_compra_num: d.factura_compra_num,
-        factura_compra_control_num: d.factura_compra_control_num || null,
-        factura_compra_fecha: d.factura_compra_fecha,
-        costo_unidad_usd: d.costo_unidad_usd === '' ? 0 : Number(d.costo_unidad_usd),
-        costo_placa_certificado_usd: d.costo_placa_certificado_usd === '' ? 0 : Number(d.costo_placa_certificado_usd),
-        costo_total_factura_usd: d.costo_total_factura_usd === '' ? null : Number(d.costo_total_factura_usd),
-        fecha_entrada: d.factura_compra_fecha || todayISO(),
-        estado: 'EN_STOCK',
-        notas: d.notas || null,
-        created_by: userId,
-        updated_by: userId,
-      }
-      const { error: insErr } = await supabase.from('inventory_units').insert(payload)
-      if (insErr) fails.push(`${d.vin}: ${insErr.message}`)
-      else ok++
-    }
-    if (fails.length) {
-      console.warn('[inventario móvil] fallos al registrar:', fails)
-      setError(`${ok} registradas. ${fails.length} con error:\n` + fails.join('\n'))
-      setPhase('review')
-      return
-    }
-    onDone(ok)
-  }
-
-  return (
-    <div style={s.overlay} onClick={() => phase !== 'saving' && phase !== 'scanning' && onCancel()}>
-      <div style={s.sheet} onClick={e => e.stopPropagation()}>
-        <div style={s.sheetHead}>
-          <div style={s.sheetTitle}>Registrar unidades</div>
-          <button style={s.closeBtn} onClick={onCancel} aria-label="Cerrar"><X size={20} /></button>
-        </div>
-
-        {error && <div style={s.err}>{error}</div>}
-
-        {phase === 'pick' && (
-          <>
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; handleFile(f) }} />
-            <div onClick={() => fileRef.current?.click()}
-              style={{ border: '2px dashed var(--border)', borderRadius: 12, padding: '36px 20px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-deep)' }}>
-              <div style={{ fontSize: 42, marginBottom: 10 }}>📷</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Escanear factura de compra</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Sube la factura de compra de KIA (foto o PDF).<br />La IA detecta cada unidad y la prepara para registrar.
-              </div>
-            </div>
-          </>
-        )}
-
-        {phase === 'scanning' && (
-          <div style={{ textAlign: 'center', padding: '36px 0', color: '#3B82F6', fontSize: 14, fontWeight: 600 }}>
-            ⏳ Leyendo la factura con IA…
-          </div>
-        )}
-
-        {phase === 'review' && (
-          <>
-            <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12 }}>
-              {toSave.length} unidad{toSave.length !== 1 ? 'es' : ''} nueva{toSave.length !== 1 ? 's' : ''} para registrar
-              {dups > 0 && ` · ${dups} ya estaba${dups !== 1 ? 'n' : ''} en inventario (se omiten)`}.
-            </div>
-            {drafts.map((d, i) => (
-              <div key={i} style={s.draftCard(d.state)}>
-                {d.state === 'dup' && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#e0894a', marginBottom: 8 }}>⚠ VIN ya registrado — se omitirá</div>
-                )}
-                <div style={s.field}>
-                  <label style={s.label}>VIN</label>
-                  <input style={{ ...s.input, fontFamily: 'monospace' }} value={d.vin} disabled={d.state === 'dup'}
-                    onChange={e => setDraft(i, 'vin', e.target.value.toUpperCase())} />
-                </div>
-                <div style={s.row2}>
-                  <div style={s.field}>
-                    <label style={s.label}>Modelo</label>
-                    <select style={s.input} value={KIA_MODELS.includes(d.modelo) ? d.modelo : 'OTRO'} disabled={d.state === 'dup'}
-                      onChange={e => setDraft(i, 'modelo', e.target.value)}>
-                      {KIA_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div style={s.field}>
-                    <label style={s.label}>Año</label>
-                    <input style={s.input} type="number" value={d.año} disabled={d.state === 'dup'}
-                      onChange={e => setDraft(i, 'año', e.target.value)} />
-                  </div>
-                </div>
-                <div style={s.row2}>
-                  <div style={s.field}>
-                    <label style={s.label}>Color</label>
-                    <select style={s.input} value={KIA_COLORS.includes(d.color) ? d.color : ''} disabled={d.state === 'dup'}
-                      onChange={e => setDraft(i, 'color', e.target.value)}>
-                      <option value="">—</option>
-                      {KIA_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div style={s.field}>
-                    <label style={s.label}>Factura N°</label>
-                    <input style={s.input} value={d.factura_compra_num} disabled={d.state === 'dup'}
-                      onChange={e => setDraft(i, 'factura_compra_num', e.target.value)} />
-                  </div>
-                </div>
-                {canFinance && d.state !== 'dup' && (
-                  <div style={s.row2}>
-                    <div style={s.field}>
-                      <label style={s.label}>Costo unidad USD</label>
-                      <input style={s.input} type="number" value={d.costo_unidad_usd}
-                        onChange={e => setDraft(i, 'costo_unidad_usd', e.target.value)} />
-                    </div>
-                    <div style={s.field}>
-                      <label style={s.label}>Total factura USD</label>
-                      <input style={s.input} type="number" value={d.costo_total_factura_usd}
-                        onChange={e => setDraft(i, 'costo_total_factura_usd', e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            <button style={s.saveBtn} onClick={handleSaveAll}>✓ Registrar {toSave.length} unidad{toSave.length !== 1 ? 'es' : ''}</button>
-            <button style={s.secBtn} onClick={() => { setDrafts([]); setError(''); setPhase('pick') }}>Escanear otra</button>
-          </>
-        )}
-
-        {phase === 'saving' && (
-          <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            💾 Registrando unidades…
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -456,7 +220,6 @@ function InventarioMovilInner() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState('ALL')
-  const [showRegistrar, setShowRegistrar] = useState(false)
   const [detalle, setDetalle] = useState<any | null>(null)
   const [flash, setFlash] = useState('')
 
@@ -524,12 +287,6 @@ function InventarioMovilInner() {
             : <div style={s.kpi}><div style={s.kpiVal}>{units.length}</div><div style={s.kpiLab}>Total</div></div>}
         </div>
 
-        {canManage && (
-          <button style={s.primaryBtn} onClick={() => setShowRegistrar(true)}>
-            <Camera size={19} strokeWidth={2.3} /> Registrar unidades
-          </button>
-        )}
-
         <div style={s.searchWrap}>
           <Search size={16} color="var(--text-secondary)" />
           <input style={s.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar VIN, modelo, placa, factura…" />
@@ -568,14 +325,6 @@ function InventarioMovilInner() {
         )}
       </div>
 
-      {showRegistrar && (
-        <RegistrarModal
-          userId={userId}
-          canFinance={canFinance}
-          onCancel={() => setShowRegistrar(false)}
-          onDone={(n) => { setShowRegistrar(false); setFlash(`${n} unidad${n !== 1 ? 'es' : ''} registrada${n !== 1 ? 's' : ''} en stock.`); loadUnits(); setTimeout(() => setFlash(''), 4000) }}
-        />
-      )}
       {detalle && (
         <DetalleModal
           unit={detalle}

@@ -1,4 +1,4 @@
-// TARGET: autocore-npa/app/settings/PlantillasTab.tsx
+// TARGET: autocore-p1/app/settings/PlantillasTab.tsx
 'use client'
 // ═══════════════════════════════════════════════════════════════════════════
 // Configuración → Plantillas de Rol (worker-backed, solo gerencia)
@@ -13,8 +13,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { TENANT } from '../tenant.config'
 
-const WORKER_URL = 'https://autocore-admin-users.sano-franco.workers.dev'
+// Empty = feature disabled until the p1 admin-users Worker is deployed.
+const WORKER_URL: string = TENANT.workers.adminUsers
 const ACCENT = '#1B6EC2'
 const GREEN = '#188A55'
 const RED = '#C0392B'
@@ -78,6 +80,7 @@ function groupFlags(flags: string[]): { title: string; flags: string[] }[] {
 }
 
 async function workerFetch(path: string, init?: RequestInit): Promise<any> {
+  if (!WORKER_URL) throw new Error('Función no disponible: el Worker de administración de usuarios no está configurado.')
   const { data } = await supabase.auth.getSession()
   const token = data?.session?.access_token
   if (!token) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
@@ -134,6 +137,14 @@ function Toast({ msg, type }: { msg: string, type: 'success' | 'error' }) {
 }
 
 export default function PlantillasTab() {
+  // Graceful degrade: template editing is worker-backed (POST /set-template).
+  if (!WORKER_URL) {
+    return (
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '32px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+        Función no disponible: el Worker de administración de usuarios aún no está configurado para este entorno.
+      </div>
+    )
+  }
   const [templates, setTemplates] = useState<RoleTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')

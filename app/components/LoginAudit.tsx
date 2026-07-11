@@ -1,17 +1,20 @@
-// TARGET: C:\Users\Franco Sano\Documents\autocore\autocore-npa\app\components\LoginAudit.tsx
+// TARGET: autocore-p1/app/components/LoginAudit.tsx
 // Drop-in: logs one audit event per browser session after login.
 // Integration: add <LoginAudit /> inside the root layout body (one line).
+// Disabled (no-op) while TENANT.workers.loginAudit is empty.
 
 'use client';
 
 import { useEffect } from 'react';
 import { supabase } from '../supabase';
+import { TENANT } from '../tenant.config';
 
-const AUDIT_URL = 'https://autocore-login-audit.sano-franco.workers.dev';
-const APP: 'npa' | 'portal' = 'npa';
+const AUDIT_URL = TENANT.workers.loginAudit;
+const APP = 'p1';
 
 export default function LoginAudit() {
   useEffect(() => {
+    if (!AUDIT_URL) return; // feature disabled until the p1 Worker is deployed
     let cancelled = false;
 
     async function log() {

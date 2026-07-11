@@ -7,6 +7,7 @@ import CrmShell from './CrmShell'
 import { useNPAPermissions } from '../components/useNPAPermissions'
 import LeadDetailModal from './LeadDetailModal'
 import { FUENTES_SELECTABLE, fuenteLabel } from './fuentes'
+import { TENANT } from '../tenant.config'
 
 const ETAPAS = [
   { key: 'nuevo',              label: 'Nuevo Lead',        color: '#8A93A0' },
@@ -181,7 +182,9 @@ const heatLabel = (score: number) => {
 const etapaInfo = (key: string) => ETAPAS.find(e => e.key === key) ?? ETAPAS[0]
 const waPhone = (tel: string) => tel.replace(/\D/g, '')
 
-const WORKER_URL = 'https://autocore-whatsapp.sano-franco.workers.dev'
+// Empty = WhatsApp send disabled; messages fall back to a local DB insert
+// until the p1 WhatsApp Worker is deployed.
+const WORKER_URL: string = TENANT.workers.whatsapp
 
 async function logStageChange(leadId: string, from: string | null, to: string, userId?: string | null) {
   if (!to || from === to) return
@@ -231,9 +234,6 @@ export default function CRMPage() {
   const [showNewLead, setShowNewLead] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [showAI, setShowAI] = useState(false)
-  const [aiLead, setAiLead] = useState<Lead | null>(null)
-
   const [filterEtapa, setFilterEtapa] = useState('')
   const [filterVendedor, setFilterVendedor] = useState('')
   const [filterSearch, setFilterSearch] = useState('')
@@ -349,6 +349,7 @@ export default function CRMPage() {
     setInputText('')
     setSending(true)
     try {
+      if (!WORKER_URL) throw new Error('WhatsApp Worker no configurado')
       const res = await fetch(WORKER_URL + '/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversation_id: selectedConv.id, lead_id: selectedConv.lead_id, to: selectedConv.wa_phone, message: text, sent_by: userId || 'agent', sent_by_nombre: 'Agente' })
@@ -492,58 +493,6 @@ export default function CRMPage() {
   }
 
 
-  // ─── AI MODAL ─────────────────────────────────────────────────────────────
-  function AIModal({ lead }: { lead: Lead }) {
-    const [output, setOutput] = useState('')
-    const [aiLoading, setAiLoading] = useState(false)
-    const [context, setContext] = useState('')
-    const generate = async () => {
-      setAiLoading(true); setOutput('')
-      const dias = daysSince(lead.ultimo_contacto)
-      const prompt = 'Eres un experto en ventas de automóviles KIA en Venezuela, entrenado con técnicas de Andy Elliott.\nGenera un talk track específico y personalizado para este lead.\n\nDATOS:\n- Nombre: ' + lead.nombre + ' ' + lead.apellidos + '\n- Etapa: ' + etapaInfo(lead.etapa).label + '\n- Modelo: ' + (lead.modelo_interes || 'Sin definir') + '\n- Presupuesto: ' + (lead.presupuesto_usd ? '$' + lead.presupuesto_usd.toLocaleString() : 'No especificado') + '\n- Fuente: ' + fuenteLabel(lead.fuente) + '\n- Días sin contacto: ' + (dias === 999 ? 'Nunca' : dias) + '\n- Vehículo actual: ' + (lead.tiene_vehiculo ? (lead.vehiculo_actual || 'Sí') : 'No') + '\n- Notas: ' + (lead.notas || 'Ninguna') + '\n- Contexto: ' + (context || 'Ninguno') + '\n\nFormato: Script principal → Objeciones → Cierre'
-      try {
-        const res = await fetch('https://autocore-crm-bot.sano-franco.workers.dev/chat', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: 'chat', messages: [{ role: 'user', content: prompt }] }),
-        })
-        const data = await res.json()
-        setOutput(data.content?.[0]?.text || data.response || 'Error generando el talk track.')
-      } catch { setOutput('Error conectando con el servidor de IA.') }
-      setAiLoading(false)
-    }
-    return (
-      <div style={S.overlay}>
-        <div style={{ ...S.modal, maxWidth: '680px', margin: 'auto', maxHeight: '90vh', overflow: 'auto' }}>
-          <div style={S.modalHeader}>
-            <div>
-              <div style={S.modalTitle}>🤖 TALK TRACK IA</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{lead.nombre} {lead.apellidos} · {etapaInfo(lead.etapa).label}</div>
-            </div>
-            <button style={S.closeBtn} onClick={() => setShowAI(false)}>✕</button>
-          </div>
-          <div style={{ padding: '24px' }}>
-            <div style={{ ...S.field, marginBottom: '16px' }}>
-              <label style={S.label}>CONTEXTO ADICIONAL</label>
-              <textarea style={{ ...S.input, marginTop: '6px', minHeight: '70px', resize: 'vertical' }} value={context} onChange={e => setContext(e.target.value)} placeholder="Ej: El cliente quiere comparar con Toyota." />
-            </div>
-            <button style={{ ...S.btnPrimary, width: '100%', marginBottom: '20px', padding: '12px' }} onClick={generate} disabled={aiLoading}>
-              {aiLoading ? '✨ Generando script...' : '✨ Generar Talk Track'}
-            </button>
-            {output && (
-              <div style={{ background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', padding: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <span style={S.label}>SCRIPT GENERADO</span>
-                  <button style={{ ...S.btnSecondary, fontSize: '11px', padding: '3px 10px' }} onClick={() => navigator.clipboard.writeText(output)}>Copiar</button>
-                </div>
-                <pre style={{ fontSize: '14px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.7, margin: 0 }}>{output}</pre>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // ─── PIPELINE VIEW ────────────────────────────────────────────────────────
   function PipelineView() {
     const [draggedId, setDraggedId] = useState<string | null>(null)
@@ -669,8 +618,6 @@ export default function CRMPage() {
                         onClick={e => e.stopPropagation()}
                         style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>💬</a>
                     )}
-                    <button style={{ ...S.btnSecondary, fontSize: '11px', padding: '3px 10px' }}
-                      onClick={e => { e.stopPropagation(); setAiLead(lead); setShowAI(true) }}>🤖 IA</button>
                   </div>
                 </td>
               </tr>
@@ -953,8 +900,6 @@ export default function CRMPage() {
     <CrmShell active="pipeline" fluid>
       {showNewLead && <NewLeadModal />}
       {showDetail && selectedLead && <LeadDetailModal lead={selectedLead} actividades={actividades} crmUsers={crmUsers} userId={userId} S={S} onClose={() => setShowDetail(false)} onChanged={loadData} />}
-      {showAI && aiLead && <AIModal lead={aiLead} />}
-
       <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '28px 32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>

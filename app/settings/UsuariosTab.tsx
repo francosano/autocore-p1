@@ -1,4 +1,4 @@
-// TARGET: autocore-npa/app/settings/UsuariosTab.tsx
+// TARGET: autocore-p1/app/settings/UsuariosTab.tsx
 'use client'
 // ═══════════════════════════════════════════════════════════════════════════
 // Configuración → Usuarios & Roles (worker-backed, DealerCenter-style UI)
@@ -13,8 +13,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { TENANT } from '../tenant.config'
 
-const WORKER_URL = 'https://autocore-admin-users.sano-franco.workers.dev'
+// Empty = feature disabled until the p1 admin-users Worker is deployed.
+const WORKER_URL: string = TENANT.workers.adminUsers
 
 // Corporate palette (DealerCenter-style)
 const ACCENT = '#1B6EC2'
@@ -80,6 +82,7 @@ function toE164(country: CountryCode, raw: string): string | null {
 
 // worker fetch — always sends the session access token
 async function workerFetch(path: string, init?: RequestInit): Promise<any> {
+  if (!WORKER_URL) throw new Error('Función no disponible: el Worker de administración de usuarios no está configurado.')
   const { data } = await supabase.auth.getSession()
   const token = data?.session?.access_token
   if (!token) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
@@ -166,6 +169,15 @@ function ConfirmModal({ title, message, confirmLabel, danger, busy, onConfirm, o
 
 // ── MAIN TAB ──────────────────────────────────────────────────────────────────
 export default function UsuariosTab({ currentUserId }: { currentUserId: string | undefined }) {
+  // Graceful degrade: the whole tab is worker-backed, so without a configured
+  // Worker there is nothing to show or mutate.
+  if (!WORKER_URL) {
+    return (
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '32px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+        Función no disponible: el Worker de administración de usuarios aún no está configurado para este entorno.
+      </div>
+    )
+  }
   const [users, setUsers] = useState<AdminUser[]>([])
   const [templates, setTemplates] = useState<RoleTemplate[]>([])
   const [loading, setLoading] = useState(true)

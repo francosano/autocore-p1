@@ -26,15 +26,17 @@ Every successful mutation writes an `activity_log` row
 
 ```
 cd workers/autocore-admin-users
-wrangler secret put SUPABASE_URL                # https://xwyiatmeyonodgncobps.supabase.co
+wrangler secret put SUPABASE_URL                # https://mrxpvutodyomldnjokau.supabase.co (P1 project)
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY   # service role key
 wrangler deploy
 ```
 
-Deployed URL: `https://autocore-admin-users.sano-franco.workers.dev`
+Deploy under a p1-* Worker name for this fork (edit wrangler.toml `name`
+before deploying); then set the deployed URL in
+`app/tenant.config.ts` → `TENANT.workers.adminUsers`.
 
-CORS is locked to `https://autocore-npa.pages.dev` (plus
-`*.autocore-npa.pages.dev` previews and `http://localhost:3000` for dev).
+Update the CORS allowlist in `src/worker.js` to the P1 Pages domain before
+deploying (it still lists the NPA domains).
 
 Notes:
 - Invite emails land wherever the Supabase Auth `SITE_URL` / redirect

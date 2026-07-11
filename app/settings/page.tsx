@@ -4,7 +4,6 @@ import { supabase } from '../supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '../components/NavBar'
 import NotificacionesTab from './NotificacionesTab'
-import ReportesTab from './ReportesTab'
 import WhatsAppLogTab from './WhatsAppLogTab'
 import UsuariosTab from './UsuariosTab'
 import PlantillasTab from './PlantillasTab'
@@ -326,7 +325,7 @@ function ActivityLogTab() {
 }
 
 // ── SIDEBAR (DealerCenter-style) ──────────────────────────────────────────────
-type TabKey = 'usuarios' | 'plantillas' | 'crm' | 'actividad' | 'notificaciones' | 'reportes' | 'whatsapp'
+type TabKey = 'usuarios' | 'plantillas' | 'crm' | 'actividad' | 'notificaciones' | 'whatsapp'
 
 const NAVY = '#16283E'
 const NAVY_ACCENT = '#3B82F6'
@@ -345,7 +344,6 @@ const SECTION_ICONS: Record<TabKey, ReactNode> = {
   crm: <SectionIcon><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></SectionIcon>,
   actividad: <SectionIcon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></SectionIcon>,
   notificaciones: <SectionIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></SectionIcon>,
-  reportes: <SectionIcon><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></SectionIcon>,
   whatsapp: <SectionIcon><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></SectionIcon>,
 }
 
@@ -415,7 +413,6 @@ export default function SettingsPage() {
       items: [
         { key: 'notificaciones', label: 'Notificaciones', desc: 'Suscriptores de alertas WhatsApp' },
         ...(isManager ? [
-          { key: 'reportes' as TabKey, label: 'Reportes',        desc: 'Reportes automáticos programados' },
           { key: 'whatsapp' as TabKey, label: 'Log de WhatsApp', desc: 'Historial de mensajes enviados' },
         ] : []),
       ],
@@ -484,7 +481,6 @@ export default function SettingsPage() {
             {tab === 'crm'           && <CRMTab logAction={logAction} />}
             {tab === 'actividad'     && <ActivityLogTab />}
             {tab === 'notificaciones' && <NotificacionesTab />}
-            {tab === 'reportes' && isManager && <ReportesTab />}
             {tab === 'whatsapp' && isManager && <WhatsAppLogTab />}
           </main>
         </div>

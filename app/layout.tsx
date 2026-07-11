@@ -2,7 +2,6 @@
 import type { Metadata, Viewport } from "next";
 import { Rajdhani, Mulish, Inter } from "next/font/google";
 import "./globals.css";
-import AIAssistantBubble from "./components/AIAssistantBubble";
 import TeamHub from "./components/TeamHub";
 import ServiceWorkerRegister from "./components/ServiceWorkerRegister";
 import InstallPrompt from "./components/InstallPrompt";
@@ -80,7 +79,6 @@ export default function RootLayout({
     <html lang="es" data-theme="dark">
       <body className={`${inter.variable} ${rajdhani.variable} ${mulish.variable}`}>
         {children}
-        <AIAssistantBubble />
         <TeamHub app="npa" />
         <ServiceWorkerRegister />
         <InstallPrompt />

@@ -22,8 +22,6 @@ import { supabase } from '../supabase'
 
 import { useNPAPermissions } from './useNPAPermissions'
 
-import RatesBanner from './RatesBanner'
-
 
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1237,10 +1235,6 @@ export default function NavBar() {
         </div>
 
       </nav>
-
-
-
-      <RatesBanner />
 
     </>
 
