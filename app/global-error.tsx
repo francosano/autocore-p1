@@ -41,14 +41,14 @@ export default function GlobalError({
               width: '56px',
               height: '56px',
               borderRadius: '14px',
-              background: 'rgba(187,22,43,0.15)',
-              border: '2px solid rgba(187,22,43,0.4)',
+              background: 'rgba(30,79,163,0.15)',
+              border: '2px solid rgba(30,79,163,0.4)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 20px',
               fontSize: '26px',
-              color: '#BB162B',
+              color: '#1E4FA3',
               fontWeight: 900,
             }}>!</div>
 
@@ -78,7 +78,7 @@ export default function GlobalError({
               onClick={() => reset()}
               style={{
                 padding: '10px 24px',
-                background: '#BB162B',
+                background: '#1E4FA3',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '8px',
@@ -96,4 +96,4 @@ export default function GlobalError({
       </body>
     </html>
   )
-}
+}

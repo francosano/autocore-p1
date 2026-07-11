@@ -52,7 +52,7 @@ interface Subscriber {
 const s: any = {
   card:    { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', marginBottom: '20px' },
   input:   { width: '100%', padding: '10px 14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' as const },
-  btnRed:  { padding: '9px 20px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' },
+  btnRed:  { padding: '9px 20px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' },
   btnGray: { padding: '9px 20px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
   label:   { fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '1.5px', display: 'block', marginBottom: '6px' },
   toggle:  (on: boolean) => ({
@@ -71,7 +71,7 @@ const thTd: any = { padding: '10px 12px', textAlign: 'left', fontSize: '10px', f
 
 function Toast({ msg, type }: { msg: string, type: 'success' | 'error' }) {
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: type === 'success' ? '#1a7a4a' : '#BB162B', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: type === 'success' ? '#1a7a4a' : 'var(--brand-primary)', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
       {type === 'success' ? '✓' : '✕'} {msg}
     </div>
   )
@@ -204,7 +204,7 @@ export default function NotificacionesTab() {
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* ── Explainer ── */}
-      <div style={{ ...s.card, background: 'rgba(187,22,43,0.05)', borderColor: 'rgba(187,22,43,0.2)' }}>
+      <div style={{ ...s.card, background: 'rgba(30,79,163,0.05)', borderColor: 'rgba(30,79,163,0.2)' }}>
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
           Notificaciones por WhatsApp
         </div>
@@ -316,4 +316,4 @@ export default function NotificacionesTab() {
       </div>
     </div>
   )
-}
+}

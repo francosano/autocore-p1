@@ -45,7 +45,7 @@ export default function LoginPage() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
-            fontSize: '11px', fontWeight: 700, color: '#BB162B',
+            fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)',
             letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '8px'
           }}>PRIME ONE</div>
           <div style={{
@@ -53,7 +53,7 @@ export default function LoginPage() {
             letterSpacing: '2px', textTransform: 'uppercase',
             transition: 'color 0.35s ease'
           }}>
-            AutoCore <span style={{ color: '#BB162B' }}>P1</span>
+            AutoCore <span style={{ color: 'var(--brand-primary)' }}>P1</span>
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
             Portal Interno — Acceso de Empleados
@@ -106,10 +106,10 @@ export default function LoginPage() {
 
           {error && (
             <div style={{
-              background: 'rgba(187,22,43,0.1)',
-              border: '1px solid rgba(187,22,43,0.3)',
+              background: 'rgba(240,85,106,0.1)',
+              border: '1px solid rgba(240,85,106,0.3)',
               borderRadius: '8px', padding: '12px',
-              fontSize: '13px', color: '#BB162B'
+              fontSize: '13px', color: 'var(--danger)'
             }}>{error}</div>
           )}
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
             onClick={handleLogin}
             disabled={loading}
             style={{
-              background: loading ? 'var(--text-muted)' : '#BB162B',
+              background: loading ? 'var(--text-muted)' : 'var(--brand-primary)',
               color: '#ffffff', border: 'none', borderRadius: '8px',
               padding: '14px', fontSize: '14px', fontWeight: 700,
               textTransform: 'uppercase', letterSpacing: '2px',
@@ -135,4 +135,4 @@ export default function LoginPage() {
       </div>
     </main>
   )
-}
+}

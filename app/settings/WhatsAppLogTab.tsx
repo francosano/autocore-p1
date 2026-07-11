@@ -58,7 +58,7 @@ const st = {
 }
 
 function statusColor(s: string | null): string {
-  if (s === 'failed') return '#BB162B'
+  if (s === 'failed') return 'var(--danger)'
   if (s === 'sent')   return '#1a7a4a'
   return '#6b7280'
 }
@@ -182,10 +182,10 @@ export default function WhatsAppLogTab() {
 
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
           {filtered.length} mensaje(s) · <span style={st.badge('#1a7a4a')}>{sentCount} enviados</span>{' '}
-          {failedCount > 0 && <span style={st.badge('#BB162B')}>{failedCount} fallidos</span>}
+          {failedCount > 0 && <span style={st.badge('var(--danger)')}>{failedCount} fallidos</span>}
         </div>
 
-        {err && <div style={{ color: '#BB162B', fontSize: 13, marginBottom: 12 }}>Error: {err}</div>}
+        {err && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>Error: {err}</div>}
 
         {/* Table */}
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
@@ -226,8 +226,8 @@ export default function WhatsAppLogTab() {
                       {r.recipients_role && (<><div style={st.label}>Audiencia</div><div>{r.recipients_role}</div></>)}
                       {r.error_msg && (
                         <>
-                          <div style={{ ...st.label, color: '#BB162B' }}>Error</div>
-                          <div style={{ color: '#BB162B' }}>{r.error_msg}</div>
+                          <div style={{ ...st.label, color: 'var(--danger)' }}>Error</div>
+                          <div style={{ color: 'var(--danger)' }}>{r.error_msg}</div>
                         </>
                       )}
                     </div>
@@ -247,7 +247,7 @@ export default function WhatsAppLogTab() {
             <button
               onClick={() => load(rows.length)}
               disabled={loading}
-              style={{ ...st.input, cursor: 'pointer', fontWeight: 700, color: '#BB162B', borderColor: 'rgba(187,22,43,0.35)' }}
+              style={{ ...st.input, cursor: 'pointer', fontWeight: 700, color: 'var(--danger)', borderColor: 'rgba(240,85,106,0.35)' }}
             >
               {loading ? 'Cargando…' : 'Cargar más'}
             </button>
@@ -256,4 +256,4 @@ export default function WhatsAppLogTab() {
       </div>
     </div>
   )
-}
+}

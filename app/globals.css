@@ -1,13 +1,23 @@
-/* TARGET: app/globals.css */
+/* TARGET: autocore-p1/app/globals.css */
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────
-   AUTOCORE NPA — THEME VARIABLES
-   Sistema navy-charcoal + Inter (2026-06).
-   Acento navy y escala de calor (hot/warm/cold) centralizados aquí:
-   las páginas deben referenciar var(--accent*) y var(--heat-*) en vez
-   de hex fijos (#BB162B / #10B981) en el pase de pulido por página.
+   AUTOCORE P1 — THEME VARIABLES
+   Sistema navy-charcoal + Inter, marca Prime One (azul y plata).
+   Brand colors centralizados en :root; las páginas referencian
+   var(--brand-*) / var(--accent*) / var(--heat-*) en vez de hex fijos.
 ───────────────────────────────────────── */
+
+:root {
+  --brand-primary: #1E4FA3;    /* Prime One blue — deep, professional */
+  --brand-primary-dark: #163C7D;
+  --brand-primary-light: #3D6BC4;
+  --brand-accent: #C0C5CE;     /* silver */
+  --brand-accent-dark: #8F96A3;
+  --brand-success: #10B981;    /* keep */
+  /* rgb() triplet of --brand-primary for rgba(...) alpha overlays */
+  --brand-primary-rgb: 30, 79, 163;
+}
 
 [data-theme="dark"] {
   --bg-page:        #0B0E14;

@@ -15,7 +15,7 @@ const fmtDateTime = (iso: string) => {
 }
 
 const CRM_ROLES = [
-  { key: 'gerente_ventas', label: 'Gerente de Ventas', color: '#BB162B',  desc: 'Acceso completo, reasigna leads, ve todo el equipo' },
+  { key: 'gerente_ventas', label: 'Gerente de Ventas', color: 'var(--brand-primary)',  desc: 'Acceso completo, reasigna leads, ve todo el equipo' },
   { key: 'jefe_ventas',    label: 'Jefe de Ventas',    color: '#b8720a',  desc: 'Supervisa vendedores, ve todos los leads' },
   { key: 'vendedor',       label: 'Vendedor',           color: '#10B981',  desc: 'Gestiona sus leads, registra actividades' },
   { key: 'bdc',            label: 'BDC',                color: '#3B82F6',  desc: 'Califica leads entrantes, asigna a vendedores' },
@@ -24,15 +24,15 @@ const CRM_ROLES = [
 ]
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#BB162B', manager: '#b8720a', auditoria: '#4a9eff',
-  vendedor: '#2ecc8a', viewer: '#7E8083', administrador: '#BB162B',
+  admin: 'var(--brand-primary)', manager: '#b8720a', auditoria: '#4a9eff',
+  vendedor: '#2ecc8a', viewer: '#7E8083', administrador: 'var(--brand-primary)',
   gerente: '#b8720a', bdc: '#3B82F6', jefe_ventas: '#8B5CF6',
 }
 
 const ACTION_COLORS: Record<string, string> = {
   'deal_saved': '#4a9eff', 'deal_approved': '#2ecc8a', 'deal_unlocked': '#b8720a',
-  'deal_deleted': '#BB162B', 'role_changed': '#a855f7', 'user_invited': '#2ecc8a',
-  'user_disabled': '#BB162B', 'user_enabled': '#2ecc8a', 'password_reset': '#b8720a',
+  'deal_deleted': 'var(--brand-primary)', 'role_changed': '#a855f7', 'user_invited': '#2ecc8a',
+  'user_disabled': 'var(--brand-primary)', 'user_enabled': '#2ecc8a', 'password_reset': '#b8720a',
   'user_login': '#4a9eff',
   'admin_users.invite': '#2ecc8a', 'admin_users.set_active': '#b8720a',
   'admin_users.set_role': '#a855f7', 'admin_users.set_permissions': '#4a9eff',
@@ -43,7 +43,7 @@ const s: any = {
   content: { padding: '24px 32px', maxWidth: '1280px', margin: '0 auto' },
   card:    { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '20px', marginBottom: '16px' },
   input:   { width: '100%', padding: '10px 14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' as const },
-  btnRed:  { padding: '9px 20px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' },
+  btnRed:  { padding: '9px 20px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' },
   btnGray: { padding: '9px 20px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
   label:   { fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '1.5px', display: 'block', marginBottom: '6px' },
   toggle:  (on: boolean) => ({
@@ -63,7 +63,7 @@ const thTd: any = { padding: '10px 12px', textAlign: 'left', fontSize: '10px', f
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function Toast({ msg, type }: { msg: string, type: 'success' | 'error' }) {
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: type === 'success' ? '#1a7a4a' : '#BB162B', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: type === 'success' ? '#1a7a4a' : 'var(--brand-primary)', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
       {type === 'success' ? '✓' : '✕'} {msg}
     </div>
   )
@@ -115,7 +115,7 @@ function CRMTab({ logAction }: {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
-          ['Usuarios CRM', crmUsers.length.toString(), '#BB162B'],
+          ['Usuarios CRM', crmUsers.length.toString(), 'var(--brand-primary)'],
           ...CRM_ROLES.slice(0, 3).map(r => [r.label, crmUsers.filter(u => u.crm_role === r.key).length.toString(), r.color]),
         ].map(([label, value, color]) => (
           <div key={String(label)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
@@ -196,7 +196,7 @@ function CRMTab({ logAction }: {
       )}
 
       <div style={s.card}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#BB162B', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
           Roles CRM — Referencia
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>

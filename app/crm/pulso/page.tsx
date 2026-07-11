@@ -101,7 +101,7 @@ function VelocidadSLA() {
     { k: 'h1', label: '15 m – 1 h', color: '#5BA84F' },
     { k: 'h4', label: '1 – 4 h', color: '#E0A23C' },
     { k: 'h24', label: '4 – 24 h', color: '#E5803C' },
-    { k: 'mas24', label: '> 24 h', color: '#BB162B' },
+    { k: 'mas24', label: '> 24 h', color: 'var(--brand-primary)' },
     { k: 'sin', label: 'Sin contactar', color: '#8a93a0' },
   ]
 
@@ -124,9 +124,9 @@ function VelocidadSLA() {
               <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{d.pct_contactados}%</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.contactados} de {d.total}</div>
             </div>
-            <div style={{ flex: '1 1 150px', background: (d.overdue_abiertos > 0 ? 'rgba(187,22,43,0.08)' : 'var(--bg-page)'), borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ flex: '1 1 150px', background: (d.overdue_abiertos > 0 ? 'rgba(30,79,163,0.08)' : 'var(--bg-page)'), borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Vencidos ahora (&gt;1 h sin contactar)</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: d.overdue_abiertos > 0 ? '#BB162B' : 'var(--text-primary)' }}>{d.overdue_abiertos}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: d.overdue_abiertos > 0 ? 'var(--brand-primary)' : 'var(--text-primary)' }}>{d.overdue_abiertos}</div>
             </div>
           </div>
 
@@ -163,7 +163,7 @@ function VelocidadSLA() {
                         <td style={{ ...td, textAlign: 'left' as const, fontWeight: 600, color: unassigned ? '#E5689A' : 'var(--text-primary)' }}>{a.asesor}</td>
                         <td style={{ ...td, fontWeight: 700 }}>{a.leads}</td>
                         <td style={td}>{a.contactados} <span style={{ color: 'var(--text-muted)' }}>({a.pct}%)</span></td>
-                        <td style={{ ...td, fontWeight: 600, color: slow ? '#BB162B' : 'var(--text-primary)' }}>{fmtMin(a.resp_mediana_min)}</td>
+                        <td style={{ ...td, fontWeight: 600, color: slow ? 'var(--brand-primary)' : 'var(--text-primary)' }}>{fmtMin(a.resp_mediana_min)}</td>
                         <td style={td}>{a.dentro_1h}</td>
                         <td style={td}><span style={{ color: a.pendientes > 0 ? '#E0A23C' : 'var(--text-muted)', fontWeight: a.pendientes > 0 ? 700 : 400 }}>{a.pendientes}</span></td>
                       </tr>
@@ -611,4 +611,4 @@ const s: Record<string, React.CSSProperties> = {
   drillRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderBottom: '1px solid var(--border)' },
   drillMetric: { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' },
   waBtn: { fontSize: 11, fontWeight: 700, color: 'var(--ok)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', textDecoration: 'none', flexShrink: 0 },
-}
+}

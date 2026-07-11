@@ -51,7 +51,7 @@ function diasEnStock(u: any): number {
 }
 const s: any = {
   page: { minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'sans-serif', paddingBottom: 40 },
-  topBar: { background: '#BB162B', color: '#fff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' },
+  topBar: { background: 'var(--brand-primary)', color: '#fff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' },
   backBtn: { background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 4, display: 'flex' },
   title: { fontSize: 15, fontWeight: 700, letterSpacing: 0.3 },
   content: { padding: '14px 14px 24px', maxWidth: 560, margin: '0 auto' },
@@ -61,7 +61,7 @@ const s: any = {
   kpiVal: { fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' },
   kpiLab: { fontSize: 9.5, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
 
-  primaryBtn: { width: '100%', padding: 15, borderRadius: 12, border: 'none', background: '#BB162B', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, marginBottom: 14 },
+  primaryBtn: { width: '100%', padding: 15, borderRadius: 12, border: 'none', background: 'var(--brand-primary)', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, marginBottom: 14 },
 
   searchWrap: { display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '0 12px', marginBottom: 10 },
   searchInput: { flex: 1, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 15, padding: '12px 0', outline: 'none' },
@@ -92,9 +92,9 @@ const s: any = {
   estadoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 },
   estadoBtn: (active: boolean, color: string) => ({ padding: '11px', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', border: `2px solid ${active ? color : 'var(--border)'}`, background: active ? color + '1a' : 'transparent', color: active ? color : 'var(--text-primary)' }),
 
-  err: { background: 'rgba(187,22,43,0.1)', border: '1px solid rgba(187,22,43,0.3)', borderRadius: 8, padding: '10px 13px', fontSize: 12.5, color: '#e88', marginBottom: 13 },
+  err: { background: 'rgba(240,85,106,0.1)', border: '1px solid rgba(240,85,106,0.3)', borderRadius: 8, padding: '10px 13px', fontSize: 12.5, color: '#e88', marginBottom: 13 },
   ok: { background: 'rgba(46,204,138,0.1)', border: '1px solid #2ecc8a55', borderRadius: 8, padding: '10px 13px', fontSize: 12.5, color: '#2ecc8a', marginBottom: 13 },
-  saveBtn: { width: '100%', padding: 14, borderRadius: 10, border: 'none', background: '#BB162B', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginTop: 6 },
+  saveBtn: { width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'var(--brand-primary)', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', marginTop: 6 },
   secBtn: { width: '100%', padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginTop: 8 },
 
   draftCard: (state: string) => ({ border: `1px solid ${state === 'dup' ? '#e0894a55' : 'var(--border)'}`, borderRadius: 11, padding: 13, marginBottom: 11, background: state === 'dup' ? 'rgba(230,137,74,0.06)' : 'var(--bg-deep)' }),
@@ -329,4 +329,4 @@ export default function InventarioMovilPage() {
       <InventarioMovilInner />
     </Suspense>
   )
-}
+}

@@ -135,7 +135,7 @@ const s: any = {
   title: { fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' },
   subtitle: { fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: '4px' },
   card: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '20px', marginBottom: '16px' },
-  btnRed: { padding: '10px 24px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
+  btnRed: { padding: '10px 24px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   btnGreen: { padding: '10px 24px', background: '#1a7a4a', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   btnGray: { padding: '10px 24px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   btnMini: { padding: '5px 12px', fontSize: '11px', fontWeight: 700, borderRadius: '4px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' },
@@ -146,7 +146,7 @@ const s: any = {
   kpiSub: { fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' },
   tabBar: { display: 'flex', gap: '4px', flexWrap: 'wrap' as const, borderBottom: '1px solid var(--border)', marginBottom: '16px' },
   tabBtn: (active: boolean) => ({
-    padding: '10px 18px', border: 'none', borderBottom: active ? '2px solid #BB162B' : '2px solid transparent',
+    padding: '10px 18px', border: 'none', borderBottom: active ? '2px solid var(--brand-primary)' : '2px solid transparent',
     background: 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
     fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
     cursor: 'pointer', marginBottom: '-1px',

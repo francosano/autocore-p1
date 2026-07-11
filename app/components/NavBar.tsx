@@ -436,7 +436,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
 
                 style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-primary)', fontSize: 13, transition: 'background 0.1s' }}
 
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(187,22,43,0.05)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,79,163,0.05)' }}
 
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
 
@@ -550,7 +550,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
 
                             padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
 
-                            background: isSelected ? 'rgba(187,22,43,0.08)' : 'transparent',
+                            background: isSelected ? 'rgba(30,79,163,0.08)' : 'transparent',
 
                             borderLeft: isSelected ? `3px solid ${meta.color}` : '3px solid transparent',
 
@@ -927,11 +927,11 @@ export default function NavBar() {
 
     padding: '5px 14px',
 
-    border: isActive ? '1px solid rgba(187,22,43,0.35)' : '1px solid transparent',
+    border: isActive ? '1px solid rgba(30,79,163,0.35)' : '1px solid transparent',
 
-    background: isActive ? 'rgba(187,22,43,0.12)' : 'transparent',
+    background: isActive ? 'rgba(30,79,163,0.12)' : 'transparent',
 
-    color: isActive ? '#BB162B' : 'var(--text-secondary)',
+    color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
 
     cursor: 'pointer', transition: 'all 0.15s',
 
@@ -983,13 +983,13 @@ export default function NavBar() {
 
           }}
 
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(187,22,43,0.08)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,79,163,0.08)' }}
 
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
 
         >
 
-          AUTOCORE <span style={{ color: '#BB162B' }}>P1</span>
+          AUTOCORE <span style={{ color: 'var(--brand-primary)' }}>P1</span>
 
         </button>
 
@@ -1031,7 +1031,7 @@ export default function NavBar() {
 
             }}
 
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(187,22,43,0.08)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,79,163,0.08)' }}
 
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
 
@@ -1080,7 +1080,7 @@ export default function NavBar() {
                   style={{ ...navBtnStyle(crmActive), display: 'flex', alignItems: 'center', gap: 6 }}>
                   CRM
                   {crmBadgeTotal > 0 && (
-                    <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: '#BB162B', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{crmBadgeTotal}</span>
+                    <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: 'var(--brand-primary)', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{crmBadgeTotal}</span>
                   )}
                 </button>
               )}
@@ -1156,7 +1156,7 @@ export default function NavBar() {
 
             }}
 
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#BB162B44'; e.currentTarget.style.color = 'var(--text-primary)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E4FA344'; e.currentTarget.style.color = 'var(--text-primary)' }}
 
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
 
@@ -1222,7 +1222,7 @@ export default function NavBar() {
 
             }}
 
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#BB162B'; e.currentTarget.style.color = '#BB162B' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand-primary)'; e.currentTarget.style.color = 'var(--brand-primary)' }}
 
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
 
@@ -1240,4 +1240,4 @@ export default function NavBar() {
 
   )
 
-}
+}

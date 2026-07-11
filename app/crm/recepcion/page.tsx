@@ -401,7 +401,7 @@ export default function RecepcionPage() {
           </button>
         </div>
 
-        {err && <div style={{ padding: '10px 14px', background: 'rgba(187,22,43,0.1)', border: '1px solid rgba(187,22,43,0.35)', borderRadius: 8, color: RED, fontSize: 13, marginBottom: 16 }}>{err}</div>}
+        {err && <div style={{ padding: '10px 14px', background: 'rgba(30,79,163,0.1)', border: '1px solid rgba(30,79,163,0.35)', borderRadius: 8, color: RED, fontSize: 13, marginBottom: 16 }}>{err}</div>}
 
         {/* HOUSE KPIs — todo el equipo (not just mine) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 14 }}>
@@ -781,4 +781,4 @@ export default function RecepcionPage() {
       </div>
     </CrmShell>
   )
-}
+}

@@ -180,9 +180,9 @@ const s: any = {
 
     borderRadius: 6,
 
-    background: 'rgba(187,22,43,0.08)',
+    background: 'rgba(30,79,163,0.08)',
 
-    color: '#BB162B',
+    color: 'var(--brand-primary)',
 
     display: 'flex', alignItems: 'center', justifyContent: 'center',
 
@@ -474,7 +474,7 @@ export default function DashboardPage() {
 
                   position: 'relative',
 
-                  ...(k.alert ? { borderColor: '#BB162B' } : {}),
+                  ...(k.alert ? { borderColor: 'var(--brand-primary)' } : {}),
 
                   ...(k.onClick ? { cursor: 'pointer' } : {}),
 
@@ -484,7 +484,7 @@ export default function DashboardPage() {
 
                 {k.alert && !kpiLoading && (
 
-                  <span style={{ position: 'absolute', top: -10, right: -10, minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: '#BB162B', color: '#fff', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(187,22,43,0.45)', border: '2px solid var(--bg-page, #fff)' }}>
+                  <span style={{ position: 'absolute', top: -10, right: -10, minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--brand-primary)', color: '#fff', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(30,79,163,0.45)', border: '2px solid var(--bg-page, #fff)' }}>
 
                     {k.value}
 
@@ -494,7 +494,7 @@ export default function DashboardPage() {
 
                 <div style={s.kpiLabel}>{k.label}</div>
 
-                <div style={{ ...s.kpiValue, ...(k.alert ? { color: '#BB162B' } : {}) }}>{k.value}</div>
+                <div style={{ ...s.kpiValue, ...(k.alert ? { color: 'var(--brand-primary)' } : {}) }}>{k.value}</div>
 
                 {k.sub && <div style={s.kpiSub}>{k.sub}</div>}
 
@@ -542,7 +542,7 @@ export default function DashboardPage() {
 
                     onMouseEnter={e => {
 
-                      e.currentTarget.style.borderColor = '#BB162B'
+                      e.currentTarget.style.borderColor = 'var(--brand-primary)'
 
                       e.currentTarget.style.transform = 'translateY(-1px)'
 
@@ -550,7 +550,7 @@ export default function DashboardPage() {
 
                       if (wrap) {
 
-                        wrap.style.background = '#BB162B'
+                        wrap.style.background = 'var(--brand-primary)'
 
                         wrap.style.color = '#fff'
 
@@ -568,9 +568,9 @@ export default function DashboardPage() {
 
                       if (wrap) {
 
-                        wrap.style.background = 'rgba(187,22,43,0.08)'
+                        wrap.style.background = 'rgba(30,79,163,0.08)'
 
-                        wrap.style.color = '#BB162B'
+                        wrap.style.color = 'var(--brand-primary)'
 
                       }
 
@@ -608,4 +608,4 @@ export default function DashboardPage() {
 
   )
 
-}
+}

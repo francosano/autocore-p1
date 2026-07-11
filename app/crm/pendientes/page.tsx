@@ -203,11 +203,11 @@ export default function CrmPendientesPage() {
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pendientes CRM - ${fecha}</title><style>
       body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1F2933;margin:32px;}
       .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5A6570;font-weight:700;}
-      h1{font-size:22px;margin:2px 0 2px;} .sub{color:#B0122B;font-weight:600;margin:0 0 2px;font-size:13px;}
+      h1{font-size:22px;margin:2px 0 2px;} .sub{color:#163C7D;font-weight:600;margin:0 0 2px;font-size:13px;}
       .meta{color:#5A6570;font-size:12px;margin:0 0 8px;}
-      h2{font-size:14px;color:#B0122B;border-bottom:1px solid #E3C9CE;padding-bottom:4px;margin:22px 0 8px;}
+      h2{font-size:14px;color:#163C7D;border-bottom:1px solid #C7CDD8;padding-bottom:4px;margin:22px 0 8px;}
       table{width:100%;border-collapse:collapse;font-size:12px;} th,td{border:1px solid #D7DBE0;padding:6px 8px;text-align:left;vertical-align:top;}
-      th{background:#F2E7E9;font-weight:700;} .empty{color:#5A6570;font-size:12px;font-style:italic;}
+      th{background:#E8ECF3;font-weight:700;} .empty{color:#5A6570;font-size:12px;font-style:italic;}
       .foot{margin-top:26px;color:#5A6570;font-size:11px;font-style:italic;border-top:1px solid #D7DBE0;padding-top:8px;}
       @media print{body{margin:0;} @page{size:A4;margin:14mm;}}
     </style></head><body>
@@ -457,4 +457,4 @@ const s: Record<string, React.CSSProperties> = {
   lostBtn: { padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
   miniBtn: { padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' },
   verBtn: { flex: '0 0 auto', fontSize: 12, fontWeight: 700, color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' },
-}
+}

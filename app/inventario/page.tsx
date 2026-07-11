@@ -46,7 +46,7 @@ const s: any = {
   title: { fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' },
   subtitle: { fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: '4px' },
   card: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '20px', marginBottom: '16px' },
-  btnRed: { padding: '10px 24px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
+  btnRed: { padding: '10px 24px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   btnGreen: { padding: '10px 24px', background: '#1a7a4a', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   btnGray: { padding: '10px 24px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
   kpiBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' },
@@ -144,7 +144,7 @@ function UnidadModal({
         </div>
 
         {/* Vehicle identity */}
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#e67e22', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Vehículo</div>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-accent-dark)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Vehículo</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <div>
             <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>VIN *</label>
@@ -204,7 +204,7 @@ function UnidadModal({
         </div>
 
         {/* Factura de compra */}
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#e67e22', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Factura de Compra</div>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-accent-dark)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Factura de Compra</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <div>
             <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Factura Nro. *</label>
@@ -237,7 +237,7 @@ function UnidadModal({
         {/* Costos — only if user can see/edit them */}
         {canEditCost && (
           <>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#e67e22', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Costos USD</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-accent-dark)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Costos USD</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
               <div>
                 <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Precio de Venta USD *</label>
@@ -624,4 +624,4 @@ export default function InventarioPage() {
       <InventarioPageInner />
     </Suspense>
   )
-}
+}

@@ -94,7 +94,7 @@ export default function SessionErrorScreen({ message, homeHref = '/' }: Props) {
           style={{
             width: '100%',
             padding: '12px',
-            background: '#BB162B',
+            background: '#1E4FA3',
             color: '#fff',
             border: 'none',
             borderRadius: 10,
@@ -126,4 +126,4 @@ export default function SessionErrorScreen({ message, homeHref = '/' }: Props) {
       </div>
     </div>
   )
-}
+}

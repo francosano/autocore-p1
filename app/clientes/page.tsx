@@ -115,10 +115,10 @@ const s: any = {
   page: { minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'sans-serif', color: 'var(--text-primary)', transition: 'background 0.35s ease' },
   content: { padding: '32px', maxWidth: '900px', margin: '0 auto' },
   card: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '6px', padding: '20px', marginBottom: '16px' },
-  sectionTitle: { fontSize: '11px', fontWeight: 700, color: '#BB162B', textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' },
+  sectionTitle: { fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase' as const, letterSpacing: '2px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' },
   label: { fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '1.5px', display: 'block', marginBottom: '4px' },
   input: { width: '100%', padding: '10px 14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none', boxSizing: 'border-box' as const },
-  btnRed: { padding: '10px 20px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' as const, letterSpacing: '1px', whiteSpace: 'nowrap' as const },
+  btnRed: { padding: '10px 20px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' as const, letterSpacing: '1px', whiteSpace: 'nowrap' as const },
   btnGray: { padding: '8px 18px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const },
   row: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid var(--border)', gap: 12 },
   muted: { fontSize: '12px', color: 'var(--text-secondary)' },
@@ -440,7 +440,7 @@ export default function ClienteCuenta() {
                   </div>
 
                   {editMsg && (
-                    <div style={{ fontSize: 12, color: '#BB162B', marginBottom: 12 }}>{editMsg}</div>
+                    <div style={{ fontSize: 12, color: 'var(--brand-primary)', marginBottom: 12 }}>{editMsg}</div>
                   )}
 
                   {editResult && (
@@ -465,7 +465,7 @@ export default function ClienteCuenta() {
                       onClick={() => setEditOpen(false)}>{editResult ? 'Cerrar' : 'Cancelar'}</button>
                     {!editResult && (
                       <button type="button" disabled={editSaving}
-                        style={{ padding: '8px 18px', background: '#BB162B', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? 0.6 : 1 }}
+                        style={{ padding: '8px 18px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? 0.6 : 1 }}
                         onClick={saveEdit}>{editSaving ? 'Guardando…' : 'Guardar cambios'}</button>
                     )}
                   </div>
@@ -543,7 +543,7 @@ export default function ClienteCuenta() {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={s.label}>Saldo</div>
-                          <div style={{ fontWeight: 700, color: (Number(c.saldo_pendiente) || 0) > 0 ? '#BB162B' : '#2ecc8a' }}>{fmtUsd(c.saldo_pendiente)}</div>
+                          <div style={{ fontWeight: 700, color: (Number(c.saldo_pendiente) || 0) > 0 ? 'var(--brand-primary)' : '#2ecc8a' }}>{fmtUsd(c.saldo_pendiente)}</div>
                         </div>
                       </div>
                     ))}
@@ -660,4 +660,4 @@ export default function ClienteCuenta() {
       </div>
     </div>
   )
-}
+}
