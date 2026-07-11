@@ -143,31 +143,6 @@ function docLabel(fileName: string): string {
   return fileName
 }
 
-// Human Spanish labels for ingreso categorías (mirrors CATEGORIAS_INGRESO in
-// tesoreria/ingresos/nuevo). Used as the receipt concept fallback.
-const CATEGORIA_LABELS: Record<string, string> = {
-  INGRESO_INICIAL: 'Inicial — pago en cuenta del vehículo',
-  INGRESO_RESERVA: 'Reserva — apartado de vehículo',
-  INGRESO_CUOTA: 'Cuota de préstamo',
-  INGRESO_PIVCA: 'PIVCA — liquidación bancaria',
-  INGRESO_LIQ_PROVINCIAL: 'Liquidación Provincial — financiamiento en Bs',
-  INGRESO_IMPUESTOS: 'Impuestos — IVA del vehículo',
-  INGRESO_ABONO_FUTURO: 'Abono a futuro negocio',
-  INGRESO_REPUESTOS: 'Repuestos',
-  INGRESO_SERVICIO: 'Servicio / postventa',
-  INGRESO_SEGURO: 'Seguro',
-  INGRESO_FX_BS: 'Cambio de Bolívares',
-  INGRESO_PRESTAMO_RECIBIDO: 'Préstamo recibido',
-  INGRESO_OTRO: 'Pago',
-}
-
-// Dealership identity stamped on the client receipt (matches the WhatsApp PDF).
-const EMPRESA = {
-  nombre: 'MOTOCENTRO II, C.A.',
-  rif: 'RIF: J-07577719-0',
-  linea: 'Concesionario KIA — Maracay, Venezuela',
-}
-
 export default function ClienteCuenta() {
   const [q, setQ] = useState('')
   const [searching, setSearching] = useState(false)
@@ -181,7 +156,6 @@ export default function ClienteCuenta() {
   const [dealDocs, setDealDocs] = useState<DealDoc[]>([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [descargando, setDescargando] = useState<string | null>(null)
 
   // Management-only client edit (roles: admin/administrador/manager/gerente).
   const { role } = useNPAPermissions()
@@ -344,139 +318,6 @@ export default function ClienteCuenta() {
       window.open(data.signedUrl, '_blank')
     } catch {
       setMsg('No se pudo abrir el documento.')
-    }
-  }
-
-  // ── Client receipt (download / reprint) ──────────────────────────────────
-  // Builds the CLIENT-FACING receipt — the same one the client gets by
-  // WhatsApp — as a clean PDF, with NO internal QR. Generated entirely in the
-  // browser from the comprobante row (jsPDF dynamic-imported at click time so
-  // the static-export build never touches a browser-only module). Downloading
-  // does NOT message the client; it's purely a local reprint.
-  async function descargarRecibo(p: Pago) {
-    if (!cliente) return
-    setDescargando(p.id)
-    try {
-      const { jsPDF } = await import('jspdf')
-      const doc = new jsPDF({ unit: 'mm', format: 'a5' })
-      const W = doc.internal.pageSize.getWidth()
-      const M = 14
-      const RED = [187, 22, 43] as const
-      const GREY = [110, 110, 110] as const
-      const DARK = [30, 30, 30] as const
-      const GREEN = [26, 122, 74] as const
-      let y = 16
-
-      // Header
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...DARK)
-      doc.text(EMPRESA.nombre, M, y); y += 5
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY)
-      doc.text(EMPRESA.rif, M, y); y += 4
-      doc.text(EMPRESA.linea, M, y); y += 6
-      doc.setDrawColor(...RED); doc.setLineWidth(0.8); doc.line(M, y, W - M, y); y += 9
-
-      // Title + receipt meta
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...RED)
-      doc.text('RECIBO DE PAGO', M, y)
-      const recNo = p.recibo_numero || p.numero || p.id.slice(0, 8).toUpperCase()
-      const fecha = fmtDate(p.confirmado_at || p.solicitado_at)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GREY)
-      doc.text('N° ' + recNo, W - M, y - 4, { align: 'right' })
-      doc.text(fecha, W - M, y, { align: 'right' })
-      y += 10
-
-      // Label/value field helper
-      const field = (label: string, value: string) => {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...GREY)
-        doc.text(label.toUpperCase(), M, y)
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...DARK)
-        const lines = doc.splitTextToSize(value || '—', W - M * 2) as string[]
-        doc.text(lines, M, y + 4.8)
-        y += 4.8 + lines.length * 5 + 3
-      }
-
-      const clienteNom = cliente.nombre || '—'
-      const clienteDoc = (cliente.tipo === 'juridico' ? 'RIF ' : '') + (cliente.doc_display || '—')
-      const concepto = (p.concepto && p.concepto.trim()) || CATEGORIA_LABELS[p.categoria || ''] || 'Pago'
-      const formaPago = p.banco_bs_nombre
-        ? ('Bolívares — ' + p.banco_bs_nombre)
-        : (p.source_label && p.source_label.trim()) || 'Dólares (USD)'
-
-      field('Recibimos de', clienteNom)
-      field('Documento', clienteDoc)
-      field('Concepto', concepto)
-      field('Forma de pago', formaPago)
-
-      // Amount box
-      y += 1
-      doc.setFillColor(245, 245, 247)
-      doc.roundedRect(M, y, W - M * 2, 19, 2, 2, 'F')
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...GREY)
-      doc.text('MONTO RECIBIDO', M + 5, y + 6)
-
-      // Print the receipt in the currency the client actually PAID:
-      //   • Bolívares  → Bs is the PRIMARY figure, with a "Tasa BCV … ~ $USD"
-      //     reference line beneath it.
-      //   • USD / USDT → USD primary, no reference line (unchanged).
-      const tasa = Number(p.tasa_aplicada || p.tasa_bcv_usada || 0)
-      const bs = Number(p.monto_bs || 0) || (tasa ? (Number(p.monto_usd) || 0) * tasa : 0)
-      const paidInBs = !!p.banco_bs_nombre && bs > 0
-
-      // Largest font (<=17pt) that keeps the amount inside the box — Bs figures
-      // can be many digits, so big amounts shrink instead of overflowing.
-      const fitAmount = (txt: string, maxW: number): number => {
-        let sz = 17
-        doc.setFont('helvetica', 'bold')
-        while (sz > 9) { doc.setFontSize(sz); if (doc.getTextWidth(txt) <= maxW) break; sz -= 0.5 }
-        return sz
-      }
-      const amountMaxW = W - M * 2 - 48   // reserve room for the left-side label
-
-      if (paidInBs) {
-        const bsTxt = 'Bs ' + bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        doc.setFontSize(fitAmount(bsTxt, amountMaxW)); doc.setTextColor(...DARK)
-        doc.text(bsTxt, W - M - 5, y + 9, { align: 'right' })
-        // Bs ONLY — no dollar amount appears on a bolívares receipt. The BCV
-        // rate stays as a small reference (it is a rate, not a USD figure).
-        if (tasa) {
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY)
-          doc.text('Tasa BCV ' + tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), M + 5, y + 14.5)
-        }
-      } else {
-        const usdTxt = fmtUsd(p.monto_usd)
-        doc.setFontSize(fitAmount(usdTxt, amountMaxW)); doc.setTextColor(...DARK)
-        doc.text(usdTxt, W - M - 5, y + 9, { align: 'right' })
-      }
-      y += 27
-
-      // Status
-      const confirmado = p.revision_estado === 'aprobado'
-        || ['CONFIRMADO', 'COMPLETADO', 'RECIBIDO', 'PICKUP_CONFIRMADO', 'BS_CONFIRMADO'].includes(p.estado || '')
-      if (confirmado) {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...GREEN)
-        doc.text('✓ PAGO CONFIRMADO', M, y)
-      } else {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...GREY)
-        doc.text('Estado: ' + (p.estado || '—'), M, y)
-      }
-      y += 11
-
-      // Footer
-      doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.3); doc.line(M, y, W - M, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GREY)
-      const footer = doc.splitTextToSize(
-        'Este recibo certifica el pago recibido por ' + EMPRESA.nombre
-        + '. Documento informativo generado el ' + fmtDate(new Date().toISOString())
-        + '. El documento fiscal correspondiente es la factura.',
-        W - M * 2) as string[]
-      doc.text(footer, M, y)
-
-      const safeName = clienteNom.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 28)
-      doc.save('Recibo_' + recNo + (safeName ? ('_' + safeName) : '') + '.pdf')
-    } catch (e: any) {
-      setMsg('No se pudo generar el recibo: ' + (e?.message || 'error inesperado'))
-    } finally {
-      setDescargando(null)
     }
   }
 
@@ -765,13 +606,6 @@ export default function ClienteCuenta() {
                           </div>
                           <div style={{ textAlign: 'right', minWidth: 150 }}>
                             <div style={{ fontWeight: 700, fontSize: 15 }}>{fmtUsd(p.monto_usd)}</div>
-                            <button type="button" onClick={() => descargarRecibo(p)} disabled={descargando === p.id}
-                              style={{ ...s.btnGray, marginTop: 6, padding: '6px 12px', fontSize: 11, cursor: descargando === p.id ? 'default' : 'pointer', opacity: descargando === p.id ? 0.6 : 1 }}>
-                              {descargando === p.id ? 'Generando…' : '⬇ Descargar recibo'}
-                            </button>
-                            <div style={{ marginTop: 5 }}>
-                              <a href={'/tesoreria/comprobante?id=' + p.id} style={{ ...s.link, fontSize: 11 }}>Recibo interno (QR) →</a>
-                            </div>
                           </div>
                         </div>
                       ))}

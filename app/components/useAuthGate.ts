@@ -16,9 +16,9 @@
 // rehydration window after a browser-back.
 //
 // USAGE (in a page component):
-//   const gate = useAuthGate(p => p.tesoreria_can_pickup || p.tesoreria_admin)
+//   const gate = useAuthGate(p => p.npa_can_view_crm)
 //   useEffect(() => {
-//     if (gate.status === 'denied') router.replace('/tesoreria/home')
+//     if (gate.status === 'denied') router.replace('/dashboard')
 //   }, [gate.status])
 //   if (gate.status === 'loading') return <GateLoading />
 //   if (gate.status === 'error')   return <SessionErrorScreen />

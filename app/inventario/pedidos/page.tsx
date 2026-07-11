@@ -936,10 +936,6 @@ function PedidosPageInner() {
                             {p.estado_unidad !== 'RECIBIDO' && (
                               <button onClick={() => setRecibirTarget(p)} style={{ ...s.btnMini, color: '#1a7a4a', borderColor: '#1a7a4a55', marginRight: '6px' }}>Recibido</button>
                             )}
-                            {p.deal_id != null && (
-                              <button onClick={() => { window.location.href = '/auditoria?open_deal=' + p.deal_id }}
-                                style={{ ...s.btnMini, marginRight: '6px' }}>Ver Negocio</button>
-                            )}
                             <button onClick={() => liberar(p)} style={{ ...s.btnMini, color: '#ef4444', borderColor: '#ef444455' }}>Liberar</button>
                           </td>
                         )}
@@ -984,11 +980,7 @@ function PedidosPageInner() {
                           <td style={s.td}>{d ? ([d.cliente_nombre, d.cliente_apellidos].filter(Boolean).join(' ') || '—') : (p.cliente_reserva || '—')}</td>
                           <td style={s.td}>{d?.vendedor || p.vendedor || '—'}</td>
                           <td style={s.td}>{fmtDate(d?.fecha_entrega)}</td>
-                          <td style={{ ...s.td, textAlign: 'right' as const }}>
-                            {p.deal_id != null && (
-                              <button onClick={() => { window.location.href = '/auditoria?open_deal=' + p.deal_id }} style={s.btnMini}>Ver Negocio</button>
-                            )}
-                          </td>
+                          <td style={{ ...s.td, textAlign: 'right' as const }}></td>
                         </tr>
                       )
                     })}

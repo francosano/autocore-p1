@@ -17,31 +17,8 @@ export default function LoginPage() {
     if (error) {
       setError('Correo o contraseña incorrectos: ' + error.message)
     } else {
-      // Redirect based on role + device.
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', data.user.id)
-        .single()
-      const role = roleData?.role || ''
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-
-      // Roles that have treasury access (tesoreria_* permissions in ROLE_DEFAULTS).
-      // On a PHONE these users land on the treasury PWA tile screen; on a
-      // desktop they keep the full dashboard. This is device-based, not a
-      // role downgrade — an admin on a phone still has every permission, the
-      // app just opens treasury-first because that's the phone use case.
-      const TREASURY_CAPABLE = [
-        'administrador', 'admin', 'manager', 'gerente', 'tesoreria', 'facturacion',
-      ]
-
-      if (role === 'auditoria') {
-        router.push(isMobile ? '/scan-docs' : '/auditoria')
-      } else if (isMobile && TREASURY_CAPABLE.includes(role)) {
-        router.push('/tesoreria/home')
-      } else {
-        router.push('/dashboard')
-      }
+      // CRM-only fork: every role lands on the dashboard hub.
+      router.push('/dashboard')
     }
     setLoading(false)
   }

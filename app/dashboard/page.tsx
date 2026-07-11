@@ -2,25 +2,15 @@
 
 // TARGET: autocore-npa/app/dashboard/page.tsx
 
-// AutoCore NPA — Dashboard Hub (redesigned)
+// Dashboard Hub — CRM-only fork.
 
 //
 
 // Layout B: KPI banner up top + department cards grid below.
 
-// KPI matrix (role-aware):
+// KPI matrix (role-aware): admin/manager/gerente → Inventario Stock.
 
-//   admin/manager/gerente → 5 KPIs: Posición Total, P&L Mes, Cuotas Vencidas,
-
-//                                    Negocios sin Aprobar, Inventario Stock
-
-//   auditoria             → 2 KPIs: Negocios sin Aprobar, Inventario Stock
-
-//   tesoreria             → 1 KPI:  Posición Total
-
-//   facturacion           → 1 KPI:  Caja Chica
-
-//   bdc / vendedor        → no KPIs (just dept cards)
+// Departments: CRM, Inventario, Clientes (financial modules removed).
 
 //
 
@@ -42,13 +32,7 @@ import NavBar from '../components/NavBar'
 
 import { useNPAPermissions } from '../components/useNPAPermissions'
 
-import {
-
-  Target, Car, Users, CreditCard, ClipboardList, Wallet,
-
-  DollarSign, Landmark, BarChart3, Folders, ExternalLink,
-
-} from 'lucide-react'
+import { Target, Car, Users } from 'lucide-react'
 
 
 
@@ -65,10 +49,6 @@ const fmt2 = (n: number) =>
 const fmtNum = (n: number) =>
 
   (n || 0).toLocaleString('en-US')
-
-
-
-const COBRANZA_URL = 'https://portal.motocentro2.com'
 
 
 
@@ -296,115 +276,27 @@ export default function DashboardPage() {
 
   const [kpiLoading, setKpiLoading] = useState(true)
 
-  const [posicionTotal, setPosicionTotal] = useState(0)
-
-  const [pnlMes, setPnlMes] = useState(0)
-
-  const [cuotasVencidas, setCuotasVencidas] = useState(0)
-
-  const [cuotasVencidasMonto, setCuotasVencidasMonto] = useState(0)
-
-  const [negociosSinAprobar, setNegociosSinAprobar] = useState(0)
-
   const [inventarioStock, setInventarioStock] = useState(0)
-
-  const [cajaChicaBalance, setCajaChicaBalance] = useState(0)
-
-  const [pagosPorConfirmar, setPagosPorConfirmar] = useState(0)
 
 
 
   const isAdmin = role === 'admin' || role === 'manager' || role === 'gerente' || role === 'administrador'
 
-  const isAuditoria = role === 'auditoria' || role === 'Auditoria'
-
-  const isTesoreria = role === 'tesoreria'
-
-  const isFacturacion = role === 'facturacion'
-
 
 
   // ── Determine which KPIs to show ───────────────────────────────────────
 
-  const showPosicion       = isAdmin || isTesoreria
-
-  const showPnlMes         = isAdmin
-
-  const showCuotasVencidas = isAdmin
-
-  const showNegocios       = isAdmin || isAuditoria
-
-  const showInventario     = isAdmin || isAuditoria
-
-  const showCajaChica      = isFacturacion
-
-  // Bank ingresos (Zelle/Wire) awaiting Mirla's confirmation. Confirmers only.
-
-  const showPagosPorConfirmar = permissions.tesoreria_can_confirm_fx || permissions.tesoreria_admin
+  const showInventario = isAdmin
 
 
 
-  const showAnyKPI = showPosicion || showPnlMes || showCuotasVencidas || showNegocios || showInventario || showCajaChica || showPagosPorConfirmar
+  const showAnyKPI = showInventario
 
 
 
   useEffect(() => {
 
     if (permsLoading) return
-
-
-
-    // v6 (2026-05-13): Role-route on entry. Tesorería-only users should never
-
-    // see the admin dashboard — they live in /tesoreria/home. Heuristic: they
-
-    // have a tesoreria_* flag but no admin/audit/CRM/inventory permission.
-
-    const hasAnyTesoreriaPerm =
-
-      permissions.tesoreria_can_pickup ||
-
-      permissions.tesoreria_can_dispatch ||
-
-      permissions.tesoreria_can_view_balance ||
-
-      permissions.tesoreria_can_replenish_cc ||
-
-      permissions.tesoreria_can_confirm_fx ||
-
-      permissions.tesoreria_can_request_salida ||
-
-      permissions.tesoreria_can_approve_salida ||
-
-      permissions.tesoreria_can_register_cc_gasto ||
-
-      permissions.tesoreria_admin ||
-
-      (permissions as any).tesoreria_can_register_ingreso === true
-
-    const hasAnyNonTesoreriaPerm =
-
-      permissions.npa_can_admin ||
-
-      permissions.npa_can_audit_deals ||
-
-      permissions.npa_can_view_crm ||
-
-      permissions.npa_can_view_clientes ||
-
-      permissions.npa_can_view_management_pnl ||
-
-      permissions.can_view_inventory ||
-
-      permissions.can_manage_inventory
-
-    if (hasAnyTesoreriaPerm && !hasAnyNonTesoreriaPerm) {
-
-      router.replace('/tesoreria/home')
-
-      return
-
-    }
 
 
 
@@ -420,85 +312,7 @@ export default function DashboardPage() {
 
     setKpiLoading(true)
 
-    const now = new Date()
-
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-
-    const today = now.toISOString().slice(0, 10)
-
-
-
     const promises: Promise<void>[] = []
-
-
-
-    // Posición Total (sum of all tesoreria_ubicaciones)
-
-    if (showPosicion) {
-
-      promises.push((async () => {
-
-        const { data } = await supabase
-
-          .from('tesoreria_ubicaciones')
-
-          .select('saldo_actual_usd')
-
-          .eq('activa', true)
-
-        const total = (data || []).reduce((sum: number, u: any) => sum + Number(u.saldo_actual_usd || 0), 0)
-
-        setPosicionTotal(total)
-
-      })())
-
-    }
-
-
-
-    // Caja Chica balance only
-
-    if (showCajaChica) {
-
-      promises.push((async () => {
-
-        const { data } = await supabase
-
-          .from('tesoreria_ubicaciones')
-
-          .select('saldo_actual_usd')
-
-          .eq('codigo', 'CAJA_CHICA')
-
-          .single()
-
-        setCajaChicaBalance(Number(data?.saldo_actual_usd || 0))
-
-      })())
-
-    }
-
-
-
-    // Negocios sin Aprobar (deals not yet APROBADO)
-
-    if (showNegocios) {
-
-      promises.push((async () => {
-
-        const { count } = await supabase
-
-          .from('deals')
-
-          .select('id', { count: 'exact', head: true })
-
-          .neq('status', 'APROBADO')
-
-        setNegociosSinAprobar(count || 0)
-
-      })())
-
-    }
 
 
 
@@ -524,116 +338,6 @@ export default function DashboardPage() {
 
 
 
-    // P&L del Mes — admin-only, sum gross profit of deals approved this month
-
-    if (showPnlMes) {
-
-      promises.push((async () => {
-
-        const { data } = await supabase
-
-          .from('deals')
-
-          .select('au_precio, au_gastos_admin, factura_compra_body_neto, factura_venta_body_neto, status, fecha_entrega')
-
-          .eq('status', 'APROBADO')
-
-          .gte('fecha_entrega', monthStart)
-
-        let pnl = 0
-
-        for (const d of (data || [])) {
-
-          // Body-only ops gross: factura_venta_body − factura_compra_body + gastos_admin
-
-          const fv = Number(d.factura_venta_body_neto || 0)
-
-          const fc = Number(d.factura_compra_body_neto || 0)
-
-          const ga = Number(d.au_gastos_admin || 0)
-
-          pnl += fv - fc + ga
-
-        }
-
-        setPnlMes(pnl)
-
-      })())
-
-    }
-
-
-
-    // Cuotas Vencidas — query Portal's cobranza_cuotas (shared backend)
-
-    if (showCuotasVencidas) {
-
-      promises.push((async () => {
-
-        const { data, count } = await supabase
-
-          .from('cobranza_cuotas')
-
-          .select('monto_cuota', { count: 'exact' })
-
-          .lt('fecha_vencimiento', today)
-
-          .is('fecha_pago', null)
-
-        setCuotasVencidas(count || 0)
-
-        const totalMonto = (data || []).reduce((sum: number, c: any) => sum + Number(c.monto_cuota || 0), 0)
-
-        setCuotasVencidasMonto(totalMonto)
-
-      })())
-
-    }
-
-
-
-    // Pagos por confirmar — mirrors /tesoreria/confirmar's "Pendientes" count:
-
-    // pending tesorería comprobantes PLUS cobranza pagos (cuota + diferida)
-
-    // still pending_review that aren't already linked to a still-pending
-
-    // comprobante (those are merged into the comprobante card, not double-counted).
-
-    if (showPagosPorConfirmar) {
-
-      promises.push((async () => {
-
-        const [compRes, cuotaRes, difRes] = await Promise.all([
-
-          supabase.from('tesoreria_comprobantes').select('numero').eq('tipo', 'INGRESO').eq('revision_estado', 'pendiente'),
-
-          supabase.from('cobranza_cuota_pagos').select('referencia_pago').eq('status', 'pending_review').eq('is_reversal', false),
-
-          supabase.from('compromisos_inicial_diferida_pagos').select('referencia').eq('status', 'pending_review').eq('is_reversal', false),
-
-        ])
-
-        const compRows = Array.isArray(compRes.data) ? compRes.data : []
-
-        const pendingNums = new Set(compRows.map((c: any) => c.numero).filter(Boolean))
-
-        const cuotas = Array.isArray(cuotaRes.data) ? cuotaRes.data : []
-
-        const difs = Array.isArray(difRes.data) ? difRes.data : []
-
-        const standaloneCuotas = cuotas.filter((p: any) => !(p.referencia_pago && pendingNums.has(p.referencia_pago))).length
-
-        const standaloneDifs = difs.filter((p: any) => !(p.referencia && pendingNums.has(p.referencia))).length
-
-        setPagosPorConfirmar(compRows.length + standaloneCuotas + standaloneDifs)
-
-      })())
-
-    }
-
-
-
     await Promise.allSettled(promises)
 
     setKpiLoading(false)
@@ -646,80 +350,6 @@ export default function DashboardPage() {
 
   const kpis: KPI[] = []
 
-  if (showPagosPorConfirmar) {
-
-    kpis.push({
-
-      key: 'porconfirmar', label: 'Pagos por Confirmar',
-
-      value: kpiLoading ? '…' : fmtNum(pagosPorConfirmar),
-
-      sub: pagosPorConfirmar > 0 ? 'Requieren tu confirmación' : 'Al día',
-
-      alert: pagosPorConfirmar > 0,
-
-      onClick: () => router.push('/tesoreria/confirmar'),
-
-    })
-
-  }
-
-  if (showPosicion) {
-
-    kpis.push({
-
-      key: 'posicion', label: 'Posición Total',
-
-      value: kpiLoading ? '…' : fmt(posicionTotal),
-
-      sub: 'Caja + Punto Cobro + Caja Chica',
-
-    })
-
-  }
-
-  if (showPnlMes) {
-
-    kpis.push({
-
-      key: 'pnl', label: 'P&L del Mes',
-
-      value: kpiLoading ? '…' : fmt(pnlMes),
-
-      sub: 'Utilidad bruta operativa',
-
-    })
-
-  }
-
-  if (showCuotasVencidas) {
-
-    kpis.push({
-
-      key: 'cuotas', label: 'Cuotas Vencidas',
-
-      value: kpiLoading ? '…' : fmtNum(cuotasVencidas),
-
-      sub: cuotasVencidas > 0 ? fmt(cuotasVencidasMonto) + ' por cobrar' : 'Al día',
-
-    })
-
-  }
-
-  if (showNegocios) {
-
-    kpis.push({
-
-      key: 'negocios', label: 'Negocios Pendientes',
-
-      value: kpiLoading ? '…' : fmtNum(negociosSinAprobar),
-
-      sub: 'Sin aprobación',
-
-    })
-
-  }
-
   if (showInventario) {
 
     kpis.push({
@@ -729,20 +359,6 @@ export default function DashboardPage() {
       value: kpiLoading ? '…' : fmtNum(inventarioStock),
 
       sub: 'Unidades disponibles',
-
-    })
-
-  }
-
-  if (showCajaChica) {
-
-    kpis.push({
-
-      key: 'cc', label: 'Caja Chica',
-
-      value: kpiLoading ? '…' : fmt2(cajaChicaBalance),
-
-      sub: 'Balance actual',
 
     })
 
@@ -781,122 +397,6 @@ export default function DashboardPage() {
       icon: Users, show: permissions.npa_can_view_clientes,
 
       onClick: () => router.push('/clientes'),
-
-    },
-
-    {
-
-      key: 'cobranza', title: 'Cobranza', description: 'Préstamos y cuotas (Portal)',
-
-      icon: CreditCard, external: true, show: true,
-
-      onClick: () => window.open(COBRANZA_URL, '_blank', 'noopener,noreferrer'),
-
-    },
-
-    {
-
-      key: 'auditoria', title: 'Auditoría', description: 'Revisión de negocios y documentos',
-
-      icon: ClipboardList, show: permissions.npa_can_audit_deals,
-
-      onClick: () => router.push('/auditoria'),
-
-    },
-
-    {
-
-      key: 'tesoreria', title: 'Tesorería', description: 'Caja, ingresos y salidas',
-
-      icon: Wallet,
-
-      // FIX (2026-06-08): include tesoreria_can_register_ingreso so ingreso-only
-
-      // staff (role auditoria_ingresos, e.g. Ángeles) see this tile. Their perm
-
-      // lives in user_permissions and was simply never added to this gate when
-
-      // the granular flag shipped on 2026-05-25.
-
-      show: permissions.tesoreria_can_view_balance
-
-         || permissions.tesoreria_can_pickup
-
-         || permissions.tesoreria_can_dispatch
-
-         || permissions.tesoreria_can_approve_salida
-
-         || permissions.tesoreria_admin
-
-         || (permissions as any).tesoreria_can_register_ingreso === true,
-
-      // Full-treasury users -> /tesoreria. Ingreso-only users -> /tesoreria/home,
-
-      // which shows them the single 'Nuevo Ingreso' tile. /tesoreria itself
-
-      // bounces register-ingreso-only users back to /dashboard, so we must
-
-      // never route them there.
-
-      onClick: () => {
-
-        const fullTreasury =
-
-          permissions.tesoreria_can_view_balance ||
-
-          permissions.tesoreria_can_pickup ||
-
-          permissions.tesoreria_can_dispatch ||
-
-          permissions.tesoreria_can_approve_salida ||
-
-          permissions.tesoreria_admin
-
-        router.push(fullTreasury ? '/tesoreria' : '/tesoreria/home')
-
-      },
-
-    },
-
-    {
-
-      key: 'cajachica', title: 'Caja Chica', description: 'Gastos menores y reposiciones',
-
-      icon: DollarSign,
-
-      show: permissions.tesoreria_can_register_cc_gasto || permissions.tesoreria_admin,
-
-      onClick: () => router.push('/tesoreria/caja-chica'),
-
-    },
-
-    {
-
-      key: 'banco', title: 'Banco', description: 'Movimientos bancarios',
-
-      icon: Landmark, show: permissions.npa_can_admin,
-
-      onClick: () => router.push('/banco'),
-
-    },
-
-    {
-
-      key: 'reportes', title: 'Reportes', description: 'P&L, impuestos y forex',
-
-      icon: BarChart3, show: permissions.npa_can_view_management_pnl,
-
-      onClick: () => router.push('/reportes/'),
-
-    },
-
-    {
-
-      key: 'admin', title: 'Administración de Negocios', description: 'Revisión y aprobación de deals',
-
-      icon: Folders, show: permissions.npa_can_admin,
-
-      onClick: () => router.push('/admin'),
 
     },
 
@@ -1077,12 +577,6 @@ export default function DashboardPage() {
                     }}
 
                   >
-
-                    {c.external && (
-
-                      <ExternalLink size={14} style={s.cardExtIcon} />
-
-                    )}
 
                     <div data-icon-wrap="1" style={s.cardIconWrap}>
 

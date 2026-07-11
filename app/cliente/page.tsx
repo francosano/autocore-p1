@@ -283,7 +283,6 @@ export default function ClienteCuenta() {
                           </div>
                           <div style={{ textAlign: 'right', minWidth: 120 }}>
                             <div style={{ fontWeight: 700, fontSize: 15 }}>{fmtUsd(p.monto_usd)}</div>
-                            <a href={'/tesoreria/comprobante?id=' + p.id} style={s.link}>Ver recibo →</a>
                           </div>
                         </div>
                       ))}
