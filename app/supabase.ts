@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// TARGET: autocore-npa/app/supabase.ts
+// TARGET: autocore-p1/app/supabase.ts
 // Supabase browser client.
 //
 // auth config:
@@ -21,8 +21,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xwyiatmeyonodgncobps.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''
+// No fallback URL on purpose: this fork must NEVER silently connect to the
+// Motocentro production project. Missing env vars are a hard startup error.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'AutoCore P1: NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ' +
+    'deben estar definidas (.env.local). No se inicia sin un proyecto Supabase explícito.'
+  )
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
