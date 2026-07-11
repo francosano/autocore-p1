@@ -1,0 +1,67 @@
+<!-- TARGET: autocore-npa/public/offline.html -->
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0B0E14" />
+    <title>Sin conexión — AutoCore</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #0B0E14;
+        color: #EAEDF2;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      .badge {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: #BB162B;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.04em;
+        margin-bottom: 18px;
+      }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      p { color: #AEB6C2; font-size: 14px; max-width: 340px; line-height: 1.5; margin: 0 0 20px; }
+      button {
+        background: #3B6FE0;
+        color: #fff;
+        border: 0;
+        border-radius: 10px;
+        padding: 11px 18px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="badge">AC</div>
+      <h1>Sin conexión</h1>
+      <p>No hay internet ahora mismo. Revisa tu conexión e inténtalo de nuevo; AutoCore se recargará solo al reconectar.</p>
+      <button onclick="location.reload()">Reintentar</button>
+    </div>
+    <script>
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

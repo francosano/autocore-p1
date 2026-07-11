@@ -1,0 +1,8 @@
+# TARGET: autocore-npa/workers/autocore-admin-users/wrangler.toml
+name = "autocore-admin-users"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+
+# Secrets (set via `wrangler secret put <NAME>` — NEVER commit values):
+#   SUPABASE_URL               https://xwyiatmeyonodgncobps.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY  service role key (server-side only)

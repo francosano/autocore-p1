@@ -1,0 +1,160 @@
+/* TARGET: app/globals.css */
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────
+   AUTOCORE NPA — THEME VARIABLES
+   Sistema navy-charcoal + Inter (2026-06).
+   Acento navy y escala de calor (hot/warm/cold) centralizados aquí:
+   las páginas deben referenciar var(--accent*) y var(--heat-*) en vez
+   de hex fijos (#BB162B / #10B981) en el pase de pulido por página.
+───────────────────────────────────────── */
+
+[data-theme="dark"] {
+  --bg-page:        #0B0E14;
+  --bg-nav:         #0E121A;
+  --bg-card:        #11151D;
+  --bg-card-green:  #10182A;
+  --bg-card-hover:  #161B25;
+  --bg-input:       #0E121A;
+  --bg-input-dis:   #0A0D13;
+  --bg-deep:        #080B11;
+
+  --border:         #232A37;
+  --border-strong:  #2E3645;
+  --border-green:   #24304A;
+  --border-dis:     #1A202B;
+
+  --text-primary:   #EAEDF2;
+  --text-secondary: #AEB6C2;
+  --text-muted:     #7B8694;
+
+  /* Acento navy (activo / primario / Claudia) */
+  --accent:         #4C82F7;
+  --accent-solid:   #3B6FE0;
+  --accent-soft:    rgba(76,130,247,0.12);
+  --accent-border:  rgba(76,130,247,0.32);
+  --on-accent:      #ffffff;
+
+  /* Escala de calor del lead */
+  --heat-hot:       #F0556A;
+  --heat-warm:      #E6A23C;
+  --heat-cold:      #57A6C9;
+
+  /* Estados semánticos */
+  --ok:             #34D399;
+  --warn:           #E6A23C;
+  --danger:         #F0556A;
+
+  --shadow-card:    0 1px 3px rgba(0,0,0,0.45);
+}
+
+[data-theme="light"] {
+  --bg-page:        #F4F6F9;
+  --bg-nav:         #FFFFFF;
+  --bg-card:        #FFFFFF;
+  --bg-card-green:  #F0F5FF;
+  --bg-card-hover:  #F7F9FC;
+  --bg-input:       #FFFFFF;
+  --bg-input-dis:   #EEF1F5;
+  --bg-deep:        #EAEEF3;
+
+  --border:         #E2E6EC;
+  --border-strong:  #D2D8E0;
+  --border-green:   #C7D8F5;
+  --border-dis:     #ECEFF3;
+
+  --text-primary:   #131722;
+  --text-secondary: #5A6573;
+  --text-muted:     #9AA4B2;
+
+  --accent:         #2C5BD6;
+  --accent-solid:   #2456C7;
+  --accent-soft:    rgba(44,91,214,0.08);
+  --accent-border:  rgba(44,91,214,0.25);
+  --on-accent:      #ffffff;
+
+  --heat-hot:       #E0455A;
+  --heat-warm:      #C9871F;
+  --heat-cold:      #2D86B5;
+
+  --ok:             #15915B;
+  --warn:           #C9871F;
+  --danger:         #E0455A;
+
+  --shadow-card:    0 1px 3px rgba(16,24,40,0.06);
+}
+
+/* ─────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.006em;
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* ─────────────────────────────────────────
+   THEME TOGGLE COMPONENT
+───────────────────────────────────────── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.theme-toggle-icon {
+  font-size: 13px;
+  line-height: 1;
+  transition: opacity 0.3s ease;
+}
+
+.theme-toggle-track {
+  width: 38px;
+  height: 20px;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.3s ease;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"]  .theme-toggle-track { background: #1A2330; }
+[data-theme="light"] .theme-toggle-track { background: var(--accent-solid); }
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  transition: left 0.3s cubic-bezier(.4,0,.2,1);
+}
+
+[data-theme="dark"]  .theme-toggle-thumb { left: 2px; }
+[data-theme="light"] .theme-toggle-thumb { left: 20px; }
+
+.theme-toggle-label {
+  font-family: var(--font-inter), 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  width: 46px;
+  transition: color 0.3s ease;
+}
