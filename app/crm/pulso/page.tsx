@@ -7,7 +7,7 @@ import CrmShell from '../CrmShell'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { fuenteLabel } from '../fuentes'
 
-// ── KIA category palette ──────────────────────────────────────────────
+// ── Opportunity category palette ──────────────────────────────────────
 const CAT = {
   hot_a: { label: 'HOT A', color: '#15A06E', bg: 'rgba(21,160,110,0.10)' },
   hot_b: { label: 'HOT B', color: '#E0A23C', bg: 'rgba(224,162,60,0.10)' },
@@ -57,7 +57,7 @@ const PERIODOS = [
 const pct = (a: number, b: number) => b > 0 ? Math.round(100 * a / b) : 0
 const waPhone = (t: string) => (t || '').replace(/\D/g, '')
 const fLabel = (k?: string | null) => fuenteLabel(k)
-const tidyModelo = (m?: string | null) => (m || 'Sin modelo').replace(/^KIA\s+/i, '')
+const tidyModelo = (m?: string | null) => (m || 'Sin modelo')
 const fmtAge = (min: number) => {
   const m = Math.round(min || 0)
   if (m < 60) return m + ' min'
@@ -406,10 +406,10 @@ export default function CrmPulsoPage() {
         </section>
       )}
 
-      {/* ── CATEGORÍA KIA (compact) + FORECAST beside ────────── */}
+      {/* ── CATEGORÍA (compact) + FORECAST beside ────────────── */}
       {cat && (
         <section style={s.card}>
-          <div style={s.cardTitle}>Categoría KIA — oportunidades abiertas <span style={s.titleNum}>{cat.total}</span></div>
+          <div style={s.cardTitle}>Categoría — oportunidades abiertas <span style={s.titleNum}>{cat.total}</span></div>
           <div style={s.catRow}>
             <div style={s.catTiles}>
               {(['hot_a', 'hot_b', 'hot_c', 'warm', 'sc'] as const).map(k => (

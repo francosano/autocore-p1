@@ -38,13 +38,13 @@ const mulish = Mulish({
 // match the page background instead of forcing iOS default.
 // ───────────────────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
-  title: "Motocentro Tesorería — AutoCore NPA",
-  description: "Sistema de cobros, ingresos y tesorería de Motocentro II — KIA Maracay.",
+  title: "AutoCore P1 — Prime One Auto Sales",
+  description: "CRM e inventario de Prime One Auto Sales — Maracay.",
   manifest: "/manifest.webmanifest",
-  applicationName: "Motocentro Tesorería",
+  applicationName: "AutoCore P1",
   appleWebApp: {
     capable: true,
-    title: "Tesorería",
+    title: "AutoCore P1",
     statusBarStyle: "black-translucent",
   },
   icons: {

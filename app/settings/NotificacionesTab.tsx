@@ -32,10 +32,9 @@ import { supabase } from '../supabase'
 // "For now" per Franco — a dropdown keeps labels consistent and typo-free.
 // Add entries here (and nothing else) to grow the list later.
 const DEPARTAMENTOS = [
-  'Tesorería',
-  'Admin (Motocentro)',
-  'Gerencia (Motocentro)',
-  'Cobranza',
+  'Ventas',
+  'Administración',
+  'Gerencia',
   'Dirección',
 ]
 
@@ -207,14 +206,13 @@ export default function NotificacionesTab() {
       {/* ── Explainer ── */}
       <div style={{ ...s.card, background: 'rgba(187,22,43,0.05)', borderColor: 'rgba(187,22,43,0.2)' }}>
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
-          📲 Notificaciones de Tesorería por WhatsApp
+          Notificaciones por WhatsApp
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          Los departamentos en esta lista reciben un WhatsApp en cada movimiento
-          de dinero de Tesorería — bancarizaciones, ingresos, pagos a proveedores,
-          reposiciones de caja chica y anulaciones. Todos los suscriptores activos
-          reciben todas las notificaciones. Usa el interruptor para activar o
-          pausar un departamento sin eliminarlo.
+          Los departamentos en esta lista reciben alertas del sistema por
+          WhatsApp. Todos los suscriptores activos reciben todas las
+          notificaciones. Usa el interruptor para activar o pausar un
+          departamento sin eliminarlo.
         </div>
       </div>
 

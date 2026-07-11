@@ -22,10 +22,6 @@ const ETAPAS = [
 
 const PIPELINE_ETAPAS = ETAPAS.filter(e => !['cerrado_ganado','cerrado_perdido'].includes(e.key))
 
-const MODELOS_KIA = [
-  'KIA Picanto','KIA Soluto','KIA Rio Stylus','KIA Sonet','KIA Seltos',
-  'KIA Sportage','KIA Sorento','KIA Carnival','KIA Stinger','KIA Pregio','Otro',
-]
 
 const RESULTADOS = [
   { key: 'contactado',    label: 'Contactado' },
@@ -457,11 +453,8 @@ export default function CRMPage() {
               <div style={{ ...S.field, gridColumn: 'span 2' }}><label style={S.label}>REFERIDO POR</label><input style={S.input} value={form.referido_por} onChange={e => inp('referido_por', e.target.value)} /></div>
             )}
             <div style={S.field}>
-              <label style={S.label}>MODELO</label>
-              <select style={S.input} value={form.modelo_interes} onChange={e => inp('modelo_interes', e.target.value)}>
-                <option value="">-- Seleccionar --</option>
-                {MODELOS_KIA.map(m => <option key={m}>{m}</option>)}
-              </select>
+              <label style={S.label}>MODELO DE INTERÉS</label>
+              <input style={S.input} value={form.modelo_interes} onChange={e => inp('modelo_interes', e.target.value)} placeholder="Ej: Toyota Corolla 2019" />
             </div>
             <div style={S.field}><label style={S.label}>PRESUPUESTO (USD)</label><input style={S.input} type="number" value={form.presupuesto_usd} onChange={e => inp('presupuesto_usd', e.target.value)} placeholder="25000" /></div>
             <div style={S.field}><label style={S.label}>COLOR PREFERIDO</label><input style={S.input} value={form.color_preferido} onChange={e => inp('color_preferido', e.target.value)} placeholder="Blanco, Negro..." /></div>

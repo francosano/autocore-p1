@@ -36,8 +36,11 @@ export default function SesionesPage() {
       setErrorMsg('');
       try {
         const { data: userData } = await (supabase as any).auth.getUser();
-        const email = userData?.user?.email || '';
-        if (email !== 'manager@motocentro2.com') {
+        const uid = userData?.user?.id || '';
+        // Gerencia-only page (was a hardcoded Motocentro manager email in NPA).
+        const { data: roleRow } = await (supabase as any)
+          .from('user_roles').select('role').eq('user_id', uid).single();
+        if (!['admin', 'administrador', 'manager'].includes(roleRow?.role || '')) {
           setDenied(true);
           setLoading(false);
           return;

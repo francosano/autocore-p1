@@ -47,13 +47,13 @@ export default function LoginPage() {
           <div style={{
             fontSize: '11px', fontWeight: 700, color: '#BB162B',
             letterSpacing: '4px', textTransform: 'uppercase', marginBottom: '8px'
-          }}>KIA Venezuela</div>
+          }}>PRIME ONE</div>
           <div style={{
             fontSize: '36px', fontWeight: 700, color: 'var(--text-primary)',
             letterSpacing: '2px', textTransform: 'uppercase',
             transition: 'color 0.35s ease'
           }}>
-            AutoCore <span style={{ color: '#BB162B' }}>NPA</span>
+            AutoCore <span style={{ color: '#BB162B' }}>P1</span>
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
             Portal Interno — Acceso de Empleados
@@ -130,7 +130,7 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-          © 2026 AutoCore NPA · KIA Venezuela
+          © 2026 AutoCore P1 · Prime One Auto Sales
         </div>
       </div>
     </main>

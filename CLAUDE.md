@@ -1,17 +1,28 @@
-# AutoCore NPA — Claude Code rules
+# AutoCore P1 — Claude Code rules
 
-Next.js STATIC EXPORT deployed to Cloudflare Pages (auto-deploy from master,
-~2 min). Backend: Supabase (project xwyiatmeyonodgncobps), anon key in the
-browser — RLS is the ENTIRE security boundary. UI text and data are Spanish;
-talk to me (Franco) in English. No emojis in product UI.
+CRM-ONLY fork of AutoCore NPA for Prime One Auto Sales (multi-brand used
+cars, Maracay). Next.js STATIC EXPORT for Cloudflare Pages. Backend:
+Supabase project mrxpvutodyomldnjokau — NEVER the Motocentro project
+(xwyiatmeyonodgncobps); nothing here may touch the Motocentro repo,
+database, or Workers. Anon key in the browser — RLS is the ENTIRE
+security boundary. UI text and data are Spanish; talk to me (Franco) in
+English. No emojis in product UI.
+
+Scope: CRM (leads, multi-channel chats), inventario, clientes, settings
+(user/role admin), sesiones. ALL financial modules were deleted in Phase
+1a — do not reintroduce them.
+
+Tenant config lives in app/tenant.config.ts. Worker URLs come ONLY from
+TENANT.workers.*; an empty URL means the feature is disabled and the UI
+must degrade gracefully (hide the action / "función no disponible") —
+never call a Motocentro Worker.
 
 ## Commands
 - Build/type-check: `npm run build` — MUST be green before any commit.
   esbuild passing alone is NOT sufficient.
 
 ## Hard rules
-- NEVER `git add .` — stage specific files only (stray .bak files exist in
-  app/reportes/). Never glob patterns.
+- NEVER `git add .` — stage specific files only. Never glob patterns.
 - NEVER write TS/UTF-8 source with PowerShell Set-Content/WriteAllText.
 - Static export constraints: no dynamic routes — use query-string routing;
   navigate with `window.location.href`, not router.push; wrap useSearchParams
@@ -20,20 +31,17 @@ talk to me (Franco) in English. No emojis in product UI.
   wrap the query as `(supabase...) as any` + Array.isArray() guard.
 - Never invent Supabase column names — schema is in docs/schema.sql; check it
   before writing any query.
-- Keep `// TARGET: autocore-npa/<path>` as line 1 of each source file. CRLF.
+- SQL migrations: WRITE files under /migrations/ (numbered .sql, one logical
+  change each, comment with expected result); NEVER execute them — Franco
+  runs them manually in the Supabase SQL editor.
+- Keep `// TARGET: autocore-p1/<path>` as line 1 of each source file. CRLF.
 - Read the actual current file before editing; never reconstruct from memory.
-- Money-touching or schema-touching changes: show Franco the plan before editing.
+- Schema-touching changes: show Franco the plan before editing.
 - Permission gates use useNPAPermissions / useAuthGate — never remove or
   weaken an existing gate.
-- comunicaciones_log.enviado_por is UUID — isUUID()-guard before insert.
-
-## Data conventions
-- BCV rate is artificial; Binance/parallel rate is used for real financial math.
-- CRM analytics exclude the Apr-8/9 mass import by default
-  (origen_carga='organico' filter, with a toggle to include).
-- campana / meta_ad_id are only populated on Meta Click-to-WhatsApp leads.
+- Only Tailwind core utility classes; brand colors via CSS variables in
+  globals.css (--brand-primary blue / --brand-accent silver).
 
 ## Deploy flow
-build green → git add <specific files> → commit → push → Cloudflare Pages
-auto-deploys from master (~2 min) → confirm on autocore-npa.pages.dev.
-Do NOT push without Franco's explicit go-ahead.
+build green → git add <specific files> → commit. Do NOT push without
+Franco's explicit go-ahead.

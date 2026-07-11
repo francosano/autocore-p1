@@ -1,13 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// TARGET: autocore-npa/app/inventario/movil/page.tsx
-// AutoCore NPA — Inventario · PWA móvil (para Yanecci)
+// TARGET: autocore-p1/app/inventario/movil/page.tsx
+// AutoCore P1 — Inventario · PWA móvil
 //
-// Pantalla móvil de operación de inventario. Tres flujos:
-//   1. Registrar unidades escaneando la factura de compra de KIA (scan:'auto',
-//      una factura por página → una unidad). Alimenta inventory_units (lado
-//      compra del P&L). Sin doble lectura, con verificación de VIN duplicado.
-//   2. Ver stock: lista en tarjetas, búsqueda y filtro por estado.
-//   3. Detalle de unidad: cambiar estado (ciclo de vida) y editar datos básicos.
+// Pantalla móvil de operación de inventario. Dos flujos:
+//   1. Ver stock: lista en tarjetas, búsqueda y filtro por estado.
+//   2. Detalle de unidad: cambiar estado (ciclo de vida) y editar datos básicos.
+// (El registro por escaneo de factura del fork NPA fue removido: dependía del
+// Worker de comprobantes de Motocentro. Las unidades se registran en desktop.)
 //
 // Permisos (igual que el módulo desktop):
 //   can_view_inventory            → ver stock
@@ -25,12 +24,7 @@ import { supabase } from '../../supabase'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { ArrowLeft, Search, Check, X, Package, ChevronRight, RefreshCw } from 'lucide-react'
 
-const KIA_MODELS = [
-  'SONET', 'SELTOS', 'SELTOS AT GT', 'SPORTAGE 4X2 GT', 'SPORTAGE 4X2 GTL',
-  'SPORTAGE 4X4', 'PICANTO', 'SOLUTO MT', 'SOLUTO AT', 'STONIC', 'K3',
-  'CERATO', 'CARNIVAL', 'TASMAN 4X4 LT', 'TASMAN 4X2', 'OTRO',
-]
-const KIA_COLORS = ['BLANCO', 'NEGRO', 'PLATA', 'GRIS', 'AZUL', 'ROJO', 'VERDE']
+const COLORES = ['BLANCO', 'NEGRO', 'PLATA', 'GRIS', 'AZUL', 'ROJO', 'VERDE']
 
 const ESTADOS = [
   { value: 'EN_STOCK', label: 'En Stock', color: '#1a7a4a' },
@@ -55,16 +49,6 @@ function diasEnStock(u: any): number {
   const ms = new Date(ref).getTime() - new Date(u.fecha_entrada).getTime()
   return Math.max(0, Math.floor(ms / 86400000))
 }
-// Best-effort normalize a scanned modelo string to the canonical list.
-function normalizeModelo(raw: string | null | undefined): string {
-  if (!raw) return ''
-  const up = raw.toUpperCase().trim()
-  const exact = KIA_MODELS.find(m => m === up)
-  if (exact) return exact
-  const partial = KIA_MODELS.find(m => m !== 'OTRO' && (up.includes(m) || m.includes(up)))
-  return partial || up
-}
-
 const s: any = {
   page: { minHeight: '100vh', background: 'var(--bg-page)', fontFamily: 'sans-serif', paddingBottom: 40 },
   topBar: { background: '#BB162B', color: '#fff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' },
@@ -175,10 +159,10 @@ function DetalleModal({ unit, userId, canManage, canFinance, onSaved, onClose }:
         <div style={{ ...s.row2, marginTop: 14 }}>
           <div style={s.field}>
             <label style={s.label}>Color</label>
-            <select style={s.input} value={KIA_COLORS.includes(color) ? color : ''} disabled={!canManage}
+            <select style={s.input} value={COLORES.includes(color) ? color : ''} disabled={!canManage}
               onChange={e => setColor(e.target.value)}>
               <option value="">—</option>
-              {KIA_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+              {COLORES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div style={s.field}>

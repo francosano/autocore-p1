@@ -1,4 +1,4 @@
-// TARGET: autocore-npa/app/crm/fuentes.ts
+// TARGET: autocore-p1/app/crm/fuentes.ts
 // Single source of truth for lead `fuente` (crm_leads.fuente) across the CRM.
 //
 // Adding a new fuente is a ONE-LINE change here: add a row to FUENTE_DEFS.
@@ -24,7 +24,6 @@ export const FUENTE_DEFS: FuenteDef[] = [
   { key: 'whatsapp',  label: 'WhatsApp',  color: '#2FBF8F', paid: false, selectable: true },
   { key: 'instagram', label: 'Instagram', color: '#E5689A', paid: true,  selectable: true },
   { key: 'website',   label: 'Sitio Web', color: '#E0A23C', paid: false, selectable: true },
-  { key: 'sgc',       label: 'SGC (Kia)', color: '#C56B4A', paid: false, selectable: true },
   { key: 'referido',  label: 'Referido',  color: '#57A6C9', paid: false, selectable: true },
   // ── ingestion / system sources (not manually selectable) ──
   { key: 'meta_ads',    label: 'Meta Ads',    color: '#5A8DEE', paid: true,  selectable: false },

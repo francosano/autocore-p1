@@ -444,7 +444,7 @@ export default function ChatsPage() {
                         )}
                         {l?.modelo_interes && (
                           <span style={{ fontSize: '9px', background: 'rgba(87,166,201,0.14)', color: 'var(--heat-cold)', borderRadius: '4px', padding: '1px 5px', fontWeight: 600 }}>
-                            {l.modelo_interes.replace('KIA ', '')}
+                            {l.modelo_interes}
                           </span>
                         )}
                       </div>

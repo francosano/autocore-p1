@@ -1,7 +1,7 @@
 {
-  "name": "Motocentro Tesorería",
-  "short_name": "Tesorería",
-  "description": "Sistema de cobros, ingresos y tesorería de Motocentro II — KIA Maracay.",
+  "name": "AutoCore P1",
+  "short_name": "AutoCore P1",
+  "description": "CRM e inventario de Prime One Auto Sales — Maracay.",
   "lang": "es-VE",
   "dir": "ltr",
   "start_url": "/dashboard",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0A0F1E",
-  "theme_color": "#BB162B",
+  "theme_color": "#1E4FA3",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -36,5 +36,5 @@
       "purpose": "any"
     }
   ],
-  "categories": ["business", "finance", "productivity"]
+  "categories": ["business", "productivity"]
 }

@@ -448,7 +448,7 @@ export default function DashboardPage() {
 
         <div style={s.greeting}>
 
-          <div style={s.greetingLabel}>AutoCore NPA</div>
+          <div style={s.greetingLabel}>AutoCore P1 — Prime One Auto Sales</div>
 
           <h1 style={s.greetingTitle}>Panel de Control</h1>
 

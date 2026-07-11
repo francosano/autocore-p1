@@ -71,10 +71,6 @@ const ETAPAS = [
   { key: 'cerrado_perdido',    label: 'Perdido',            color: '#E5556A' },
 ]
 
-const MODELOS_KIA = [
-  'KIA Picanto','KIA Soluto','KIA Rio Stylus','KIA Sonet','KIA Seltos',
-  'KIA Sportage','KIA Sorento','KIA Carnival','KIA Stinger','KIA Pregio','Otro',
-]
 
 const RESULTADOS = [
   { key: 'contactado',    label: 'Contactado' },
@@ -1054,11 +1050,8 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
                     </select>
                   </div>
                   <div style={S.field}>
-                    <label style={S.label}>MODELO</label>
-                    <select style={S.input} value={editForm.modelo_interes} onChange={e => inp('modelo_interes', e.target.value)}>
-                      <option value="">-- Seleccionar --</option>
-                      {MODELOS_KIA.map(m => <option key={m}>{m}</option>)}
-                    </select>
+                    <label style={S.label}>MODELO DE INTERÉS</label>
+                    <input style={S.input} value={editForm.modelo_interes} onChange={e => inp('modelo_interes', e.target.value)} placeholder="Ej: Toyota Corolla 2019" />
                   </div>
                   <div style={S.field}><label style={S.label}>PRESUPUESTO (USD)</label><input style={S.input} type="number" value={editForm.presupuesto_usd} onChange={e => inp('presupuesto_usd', e.target.value)} /></div>
                   <div style={S.field}><label style={S.label}>COLOR PREFERIDO</label><input style={S.input} value={editForm.color_preferido} onChange={e => inp('color_preferido', e.target.value)} /></div>

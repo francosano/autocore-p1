@@ -24,27 +24,8 @@ const fmtDate = (iso: string | null | undefined) => {
   return `${d}/${m}/${y}`
 }
 
-// ─── Canonical model list (from KIA Venezuela facturas + extras) ────────────
-const KIA_MODELS = [
-  'SONET',
-  'SELTOS',
-  'SELTOS AT GT',
-  'SPORTAGE 4X2 GT',
-  'SPORTAGE 4X2 GTL',
-  'SPORTAGE 4X4',
-  'PICANTO',
-  'SOLUTO MT',
-  'SOLUTO AT',
-  'STONIC',
-  'K3',
-  'CERATO',
-  'CARNIVAL',
-  'TASMAN 4X4 LT',
-  'TASMAN 4X2',
-  'OTRO', // free-text fallback
-]
-
-const KIA_COLORS = [
+// Multi-brand used-car inventory: modelo is free text (no brand catalog).
+const COLORES = [
   'BLANCO', 'NEGRO', 'PLATA', 'GRIS', 'AZUL', 'ROJO', 'VERDE',
 ]
 
@@ -159,7 +140,7 @@ function UnidadModal({
           {isNew ? '➕ Nueva Unidad' : '✏️ Editar Unidad'}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-          {isNew ? 'Registra una unidad nueva de la factura de compra de KIA Venezuela.' : `VIN: ${unidad.vin}`}
+          {isNew ? 'Registra una unidad nueva del inventario.' : `VIN: ${unidad.vin}`}
         </div>
 
         {/* Vehicle identity */}
@@ -176,14 +157,12 @@ function UnidadModal({
           </div>
           <div>
             <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Modelo *</label>
-            <select
-              value={form.modelo}
-              onChange={e => setField('modelo', e.target.value)}
+            <input
+              type="text" value={form.modelo}
+              onChange={e => setField('modelo', e.target.value.toUpperCase())}
+              placeholder="Ej: TOYOTA COROLLA"
               style={{ ...s.input, width: '100%', marginTop: '4px' }}
-            >
-              <option value="">Selecciona...</option>
-              {KIA_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            />
           </div>
           <div>
             <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Año *</label>
@@ -201,7 +180,7 @@ function UnidadModal({
               style={{ ...s.input, width: '100%', marginTop: '4px' }}
             >
               <option value="">Selecciona...</option>
-              {KIA_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+              {COLORES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -225,7 +204,7 @@ function UnidadModal({
         </div>
 
         {/* Factura de compra */}
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#e67e22', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Factura de Compra (KIA Venezuela)</div>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#e67e22', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '12px' }}>Factura de Compra</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <div>
             <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Factura Nro. *</label>
@@ -532,7 +511,7 @@ function InventarioPageInner() {
             </select>
             <select value={filterModelo} onChange={e => setFilterModelo(e.target.value)} style={s.input}>
               <option value="ALL">Todos los Modelos</option>
-              {KIA_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+              {[...new Set(units.map((u: any) => u.modelo).filter(Boolean))].sort().map(m => <option key={String(m)} value={String(m)}>{String(m)}</option>)}
             </select>
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}

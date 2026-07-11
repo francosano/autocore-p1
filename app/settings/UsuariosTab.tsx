@@ -629,7 +629,7 @@ export default function UsuariosTab({ currentUserId }: { currentUserId: string |
                 </div>
                 <div>
                   <label style={s.label}>Correo Electrónico *</label>
-                  <input style={s.input} type="email" value={invEmail} onChange={e => setInvEmail(e.target.value)} placeholder="usuario@motocentro2.com" />
+                  <input style={s.input} type="email" value={invEmail} onChange={e => setInvEmail(e.target.value)} placeholder="usuario@correo.com" />
                 </div>
                 <div>
                   <label style={s.label}>Rol del Sistema *</label>

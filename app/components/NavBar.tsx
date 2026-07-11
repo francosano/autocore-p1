@@ -989,7 +989,7 @@ export default function NavBar() {
 
         >
 
-          AUTOCORE <span style={{ color: '#BB162B' }}>NPA</span>
+          AUTOCORE <span style={{ color: '#BB162B' }}>P1</span>
 
         </button>
 

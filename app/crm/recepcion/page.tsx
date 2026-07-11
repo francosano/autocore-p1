@@ -18,10 +18,6 @@ import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { FUENTES_SELECTABLE } from '../fuentes'
 
 const RED = 'var(--accent-solid)'
-const MODELOS_KIA = [
-  'KIA Picanto', 'KIA Soluto', 'KIA Rio Stylus', 'KIA Sonet', 'KIA Seltos',
-  'KIA Sportage', 'KIA Sorento', 'KIA Carnival', 'KIA Stinger', 'KIA Pregio', 'Otro',
-]
 const ETAPA_LABELS: Record<string, string> = {
   nuevo: 'Nuevo', contactado: 'Contactado', cita_agendada: 'Cita agendada',
   visita_showroom: 'Visita', oferta_presentada: 'Oferta', financiamiento: 'Financiamiento',
@@ -430,10 +426,7 @@ export default function RecepcionPage() {
               <div><label style={lbl}>EMAIL</label><input style={inp} value={wi.email} onChange={e => setWi(p => ({ ...p, email: e.target.value }))} placeholder="opcional" /></div>
               <div>
                 <label style={lbl}>MODELO DE INTERÉS</label>
-                <select style={inp} value={wi.modelo} onChange={e => setWi(p => ({ ...p, modelo: e.target.value }))}>
-                  <option value="">Sin definir</option>
-                  {MODELOS_KIA.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <input style={inp} value={wi.modelo} onChange={e => setWi(p => ({ ...p, modelo: e.target.value }))} placeholder="Ej: Toyota Corolla 2019" />
               </div>
               <div>
                 <label style={lbl}>FUENTE</label>

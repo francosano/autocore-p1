@@ -4,13 +4,11 @@
 //
 // 2026-05-29
 //
-// Reads public.whatsapp_log (written by the autocore-whatsapp Worker, one row
-// per send). Manager account only (manager@motocentro2.com) — the settings
-// menu hides this tab for everyone else, and RLS on whatsapp_log enforces it
-// server-side too.
+// Reads public.whatsapp_log (written by the WhatsApp Worker, one row per
+// send). Gerencia roles only — the settings menu hides this tab for everyone
+// else, and RLS on whatsapp_log enforces it server-side too.
 //
-// Covers OUTBOUND only: cobranza reminders, /notify-tesoreria pings, template
-// sends. Inbound conversation history is the separate (future) Wazzup item.
+// Covers OUTBOUND only. Inbound conversation history lives in CRM chats.
 // ═══════════════════════════════════════════════════════════════════════════
 'use client'
 

@@ -211,14 +211,14 @@ export default function CrmPendientesPage() {
       .foot{margin-top:26px;color:#5A6570;font-size:11px;font-style:italic;border-top:1px solid #D7DBE0;padding-top:8px;}
       @media print{body{margin:0;} @page{size:A4;margin:14mm;}}
     </style></head><body>
-      <div class="eyebrow">AUTOCORE · KIA MARACAY</div>
+      <div class="eyebrow">AUTOCORE P1 · PRIME ONE AUTO SALES</div>
       <h1>Pendientes del CRM</h1>
       <div class="sub">${esc(scope)}${filtro ? ' · ' + esc(filtro) : ''}</div>
       <div class="meta">Generado el ${fecha}</div>
       ${section('Seguimientos sugeridos', ['Acción sugerida', 'Cliente', 'Asesor', 'Detalle'], segRows)}
       ${section('Candidatos a marcar perdido', ['Motivo', 'Cliente', 'Asesor', 'Detalle'], lostRows)}
       ${section('Alertas de conversación', ['Alerta', 'Cliente', 'Asesor', 'Acción'], findRows)}
-      <div class="foot">Reporte generado por AutoCore para el equipo de Kia Maracay.</div>
+      <div class="foot">Reporte generado por AutoCore P1 para el equipo de Prime One Auto Sales.</div>
     </body></html>`
     const w = window.open('', '_blank')
     if (!w) { setErr('Permite ventanas emergentes para descargar el PDF.'); return }

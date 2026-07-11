@@ -392,9 +392,10 @@ export default function SettingsPage() {
     </div>
   )
 
-  const isManager = currentUser?.email === 'manager@motocentro2.com'
-  // Plantillas de Rol: solo gerencia (el worker re-verifica server-side).
+  // Plantillas de Rol y Log de WhatsApp: solo gerencia (el worker re-verifica
+  // server-side). NPA gated the log to one hardcoded manager email; P1 uses roles.
   const isGerencia = ['admin', 'manager', 'administrador'].includes(userRole)
+  const isManager = isGerencia
 
   const groups: { title: string; items: { key: TabKey; label: string; desc: string }[] }[] = [
     {
