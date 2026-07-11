@@ -470,6 +470,11 @@ function InventarioPageInner() {
               Pipeline de Pedidos
             </button>
             {canManage && (
+              <button onClick={() => { window.location.href = '/inventario/importar' }} style={s.btnGray}>
+                Importar del sitio web
+              </button>
+            )}
+            {canManage && (
               <button onClick={() => setShowNew(true)} style={s.btnRed}>
                 ➕ Nueva Unidad
               </button>

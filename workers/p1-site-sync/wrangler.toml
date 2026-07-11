@@ -1,0 +1,21 @@
+name = "p1-site-sync"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# Daily scheduled crawl at 07:30 UTC (~03:30 Miami). Adjust as needed.
+[triggers]
+crons = ["30 7 * * *"]
+
+# ── Secrets (set with `wrangler secret put`, never commit) ──────────────────
+#   SUPABASE_URL                https://mrxpvutodyomldnjokau.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   the P1 project's service_role key (server only)
+#   SYNC_SECRET                 shared secret required on the manual trigger
+#
+# Non-secret config can live here as plain vars:
+[vars]
+SITE_BASE = "https://www.p1autosales.com"
+SITEMAP_URL = "https://www.p1autosales.com/inventory_usedcars-sitemap.xml"
+# Politeness delay between detail-page fetches, milliseconds.
+FETCH_DELAY_MS = "1500"
+# Honest identifying User-Agent (contact included).
+USER_AGENT = "AutoCoreP1-SiteSync/1.0 (+https://www.p1autosales.com; inventory sync; contact: franco.sano@cefinternational.com)"
