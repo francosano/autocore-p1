@@ -8,6 +8,7 @@ import { useNPAPermissions } from '../components/useNPAPermissions'
 import LeadDetailModal from './LeadDetailModal'
 import { FUENTES_SELECTABLE, fuenteLabel } from './fuentes'
 import { TENANT } from '../tenant.config'
+import { PHONE_COUNTRIES, PhoneCountry, toE164, formatPhone, waDigits } from '../lib/phone'
 
 const ETAPAS = [
   { key: 'nuevo',              label: 'Nuevo Lead',        color: '#8A93A0' },
@@ -176,7 +177,9 @@ const heatLabel = (score: number) => {
 }
 
 const etapaInfo = (key: string) => ETAPAS.find(e => e.key === key) ?? ETAPAS[0]
-const waPhone = (tel: string) => tel.replace(/\D/g, '')
+// wa.me digits — E.164-normalizes US/VE numbers (legacy values fall back to a
+// plain digit strip). See app/lib/phone.ts.
+const waPhone = (tel: string) => waDigits(tel)
 
 // Empty = WhatsApp send disabled; messages fall back to a local DB insert
 // until the p1 WhatsApp Worker is deployed.
@@ -400,9 +403,18 @@ export default function CRMPage() {
       tiene_vehiculo: false, vehiculo_actual: '', asignado_a: '', notas: '',
     })
     const [saving, setSaving] = useState(false)
+    const [telPais, setTelPais] = useState<PhoneCountry>('US')
+    const [telErr, setTelErr] = useState('')
     const inp = (field: string, value: string | boolean) => setForm(p => ({ ...p, [field]: value }))
     const save = async () => {
       if (!form.nombre || !form.apellidos || !form.telefono) return
+      // Normalize the phone to E.164 under the selected country (US/VE).
+      const telE164 = toE164(form.telefono, telPais)
+      if (!telE164) {
+        setTelErr('Teléfono inválido para ' + (telPais === 'US' ? 'US (+1): usa 10 dígitos, ej. 305-555-1234' : 'Venezuela (+58): ej. 0412-1234567'))
+        return
+      }
+      setTelErr('')
       setSaving(true)
       // asignado_a (UUID) es la fuente de verdad; el nombre se deriva de la
       // MISMA fila de user_roles para que nunca queden desparejados.
@@ -410,7 +422,7 @@ export default function CRMPage() {
       await supabase.from('crm_leads').insert({
         nombre: form.nombre.trim(), apellidos: form.apellidos.trim(),
         cedula_prefix: form.cedula_prefix, cedula: form.cedula.trim() || null,
-        telefono: form.telefono.trim(), email: form.email.trim() || null,
+        telefono: telE164, email: form.email.trim() || null,
         fuente: form.fuente, referido_por: form.referido_por.trim() || null,
         modelo_interes: form.modelo_interes || null,
         presupuesto_usd: form.presupuesto_usd ? parseFloat(form.presupuesto_usd) : null,
@@ -441,7 +453,17 @@ export default function CRMPage() {
                 <input style={{ ...S.input, flex: 1 }} value={form.cedula} onChange={e => inp('cedula', e.target.value)} placeholder="12345678" />
               </div>
             </div>
-            <div style={S.field}><label style={S.label}>TELÉFONO *</label><input style={S.input} value={form.telefono} onChange={e => inp('telefono', e.target.value)} placeholder="+58 424-0000000" /></div>
+            <div style={S.field}>
+              <label style={S.label}>TELÉFONO *</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <select style={{ ...S.input, width: '92px' }} value={telPais} onChange={e => setTelPais(e.target.value as PhoneCountry)}>
+                  {PHONE_COUNTRIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+                <input style={{ ...S.input, flex: 1 }} value={form.telefono} onChange={e => inp('telefono', e.target.value)}
+                  placeholder={telPais === 'US' ? '305-555-1234' : '0412-1234567'} />
+              </div>
+              {telErr && <div style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }}>{telErr}</div>}
+            </div>
             <div style={S.field}><label style={S.label}>EMAIL</label><input style={S.input} value={form.email} onChange={e => inp('email', e.target.value)} /></div>
             <div style={S.field}>
               <label style={S.label}>FUENTE</label>
@@ -594,7 +616,7 @@ export default function CRMPage() {
               >
                 <td style={{ padding: '12px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{lead.nombre} {lead.apellidos}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.telefono.startsWith('kommo_') ? '—' : lead.telefono}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lead.telefono.startsWith('kommo_') ? '—' : formatPhone(lead.telefono)}</div>
                 </td>
                 <td style={{ padding: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>{lead.modelo_interes || '—'}</td>
                 <td style={{ padding: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>{fuenteLabel(lead.fuente)}</td>
@@ -808,7 +830,7 @@ export default function CRMPage() {
               <div style={{ fontSize: '32px', fontWeight: 600, color: heatColor(convLead.heat_score), fontFamily: 'var(--font-inter), Inter, sans-serif' }}>{convLead.heat_score}</div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Heat Score</div>
             </div>
-            {[['Nombre', convLead.nombre + ' ' + convLead.apellidos], ['Teléfono', convLead.telefono], ['Modelo', convLead.modelo_interes || '—'], ['Etapa', convLead.etapa], ['Asignado', convLead.asignado_nombre || '—']].map(([k, v]) => (
+            {[['Nombre', convLead.nombre + ' ' + convLead.apellidos], ['Teléfono', formatPhone(convLead.telefono)], ['Modelo', convLead.modelo_interes || '—'], ['Etapa', convLead.etapa], ['Asignado', convLead.asignado_nombre || '—']].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-inter), Inter, sans-serif', fontWeight: 600 }}>{k}</span>
                 <span style={{ fontSize: '11px', color: 'var(--text-primary)', textAlign: 'right', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>

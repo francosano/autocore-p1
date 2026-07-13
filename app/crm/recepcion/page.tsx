@@ -16,6 +16,7 @@ import { supabase } from '../../supabase'
 import CrmShell from '../CrmShell'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { FUENTES_SELECTABLE } from '../fuentes'
+import { PHONE_COUNTRIES, PhoneCountry, toE164 } from '../../lib/phone'
 
 const RED = 'var(--accent-solid)'
 const ETAPA_LABELS: Record<string, string> = {
@@ -73,6 +74,7 @@ export default function RecepcionPage() {
   // Walk-in form
   const [showWalkin, setShowWalkin] = useState(false)
   const [wi, setWi] = useState({ nombre: '', apellidos: '', telefono: '', email: '', modelo: '', fuente: 'walk_in' })
+  const [wiTelPais, setWiTelPais] = useState<PhoneCountry>('US')
   const [wiSaving, setWiSaving] = useState(false)
   const nombreRef = useRef<HTMLInputElement>(null)
   // Auto-focus NOMBRE when the walk-in form opens, so recepción types right away.
@@ -225,11 +227,16 @@ export default function RecepcionPage() {
     if (!wi.nombre.trim() || !wi.apellidos.trim() || !wi.telefono.trim()) {
       setErr('Nombre, apellidos y teléfono son obligatorios.'); return
     }
+    // Normalize the phone to E.164 under the selected country (US/VE).
+    const telE164 = toE164(wi.telefono, wiTelPais)
+    if (!telE164) {
+      setErr('Teléfono inválido para ' + (wiTelPais === 'US' ? 'US (+1): usa 10 dígitos, ej. 305-555-1234' : 'Venezuela (+58): ej. 0412-1234567')); return
+    }
     setWiSaving(true); setErr(null)
     try {
       const { error } = await supabase.from('crm_leads').insert({
         nombre: wi.nombre.trim(), apellidos: wi.apellidos.trim(),
-        telefono: wi.telefono.trim(), email: wi.email.trim() || null,
+        telefono: telE164, email: wi.email.trim() || null,
         modelo_interes: wi.modelo || null,
         fuente: wi.fuente || 'walk_in', etapa: 'nuevo', heat_score: 55,
         // Auto-asignado a ella: ambos campos de la MISMA fila user_roles (me),
@@ -422,7 +429,16 @@ export default function RecepcionPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
               <div><label style={lbl}>NOMBRE *</label><input ref={nombreRef} style={inp} value={wi.nombre} onChange={e => setWi(p => ({ ...p, nombre: e.target.value }))} /></div>
               <div><label style={lbl}>APELLIDOS *</label><input style={inp} value={wi.apellidos} onChange={e => setWi(p => ({ ...p, apellidos: e.target.value }))} /></div>
-              <div><label style={lbl}>TELÉFONO *</label><input style={inp} value={wi.telefono} onChange={e => setWi(p => ({ ...p, telefono: e.target.value }))} placeholder="+58 ..." /></div>
+              <div>
+                <label style={lbl}>TELÉFONO *</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select style={{ ...inp, width: 88 }} value={wiTelPais} onChange={e => setWiTelPais(e.target.value as PhoneCountry)}>
+                    {PHONE_COUNTRIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                  <input style={{ ...inp, flex: 1 }} value={wi.telefono} onChange={e => setWi(p => ({ ...p, telefono: e.target.value }))}
+                    placeholder={wiTelPais === 'US' ? '305-555-1234' : '0412-1234567'} />
+                </div>
+              </div>
               <div><label style={lbl}>EMAIL</label><input style={inp} value={wi.email} onChange={e => setWi(p => ({ ...p, email: e.target.value }))} placeholder="opcional" /></div>
               <div>
                 <label style={lbl}>MODELO DE INTERÉS</label>

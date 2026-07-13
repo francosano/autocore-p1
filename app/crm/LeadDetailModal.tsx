@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useNPAPermissions } from '../components/useNPAPermissions'
 import { FUENTES_SELECTABLE, fuenteLabel } from './fuentes'
+import { PHONE_COUNTRIES, PhoneCountry, toE164, detectCountry, formatPhone, waDigits } from '../lib/phone'
 
 interface Lead {
   id: string
@@ -132,7 +133,9 @@ const heatLabel = (score: number) => {
 }
 
 const etapaInfo = (key: string) => ETAPAS.find(e => e.key === key) ?? ETAPAS[0]
-const waPhone = (tel: string) => tel.replace(/\D/g, '')
+// wa.me digits — E.164-normalizes US/VE numbers (legacy values fall back to a
+// plain digit strip). See app/lib/phone.ts.
+const waPhone = (tel: string) => waDigits(tel)
 
 async function logStageChange(leadId: string, from: string | null, to: string, userId?: string | null) {
   if (!to || from === to) return
@@ -196,6 +199,8 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
       proxima_accion: lead.proxima_accion || '',
       proxima_accion_at: lead.proxima_accion_at ? lead.proxima_accion_at.slice(0, 16) : '',
     })
+    // Country for the phone field: pre-detected from the stored number (US/VE).
+    const [telPais, setTelPais] = useState<PhoneCountry>(detectCountry(lead.telefono || '') || 'US')
 
     // Gobernanza: solo supervisor/jefe/Franco pueden marcar Perdido.
     const { permissions: npaPerms } = useNPAPermissions()
@@ -404,8 +409,19 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
 
     const saveEdit = async () => {
       if (saving) return
-      setSaving(true); setSaveErr('')
       const tr = (v: any) => (v == null ? '' : String(v)).trim()
+      // Normalize the phone to E.164 (US/VE) unless it's a kommo_ synthetic key.
+      const rawTel = tr(editForm.telefono)
+      let telE164 = rawTel
+      if (rawTel && !rawTel.startsWith('kommo_')) {
+        const norm = toE164(rawTel, telPais)
+        if (!norm) {
+          setSaveErr('Teléfono inválido para ' + (telPais === 'US' ? 'US (+1): usa 10 dígitos, ej. 305-555-1234' : 'Venezuela (+58): ej. 0412-1234567'))
+          return
+        }
+        telE164 = norm
+      }
+      setSaving(true); setSaveErr('')
       const prevAssigned = (lead as any).asignado_a || ''
       try {
         // Resolver el asesor asignado por UUID (el nombre se deriva del UUID elegido).
@@ -413,7 +429,7 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
         const { error } = await supabase.from('crm_leads').update({
           nombre: tr(editForm.nombre), apellidos: tr(editForm.apellidos),
           cedula_prefix: editForm.cedula_prefix, cedula: tr(editForm.cedula) || null,
-          telefono: tr(editForm.telefono), email: tr(editForm.email) || null,
+          telefono: telE164, email: tr(editForm.email) || null,
           fuente: editForm.fuente, referido_por: tr(editForm.referido_por) || null,
           modelo_interes: editForm.modelo_interes || null,
           presupuesto_usd: editForm.presupuesto_usd ? parseFloat(editForm.presupuesto_usd) : null,
@@ -593,7 +609,7 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
                   {lead.nombre} {lead.apellidos}
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '3px' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{lead.telefono}</span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{String(lead.telefono || '').startsWith('kommo_') ? '—' : formatPhone(lead.telefono)}</span>
                   {lead.email && <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{lead.email}</span>}
                   <EtapaBadge etapa={etapaEdit} />
                   <HeatBadge score={lead.heat_score} />
@@ -1077,7 +1093,16 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
                       <input style={{ ...S.input, flex: 1 }} value={editForm.cedula} onChange={e => inp('cedula', e.target.value)} />
                     </div>
                   </div>
-                  <div style={S.field}><label style={S.label}>TELÉFONO *</label><input style={S.input} value={editForm.telefono} onChange={e => inp('telefono', e.target.value)} /></div>
+                  <div style={S.field}>
+                    <label style={S.label}>TELÉFONO *</label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <select style={{ ...S.input, width: '92px' }} value={telPais} onChange={e => setTelPais(e.target.value as PhoneCountry)}>
+                        {PHONE_COUNTRIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                      </select>
+                      <input style={{ ...S.input, flex: 1 }} value={editForm.telefono} onChange={e => inp('telefono', e.target.value)}
+                        placeholder={telPais === 'US' ? '305-555-1234' : '0412-1234567'} />
+                    </div>
+                  </div>
                   <div style={S.field}><label style={S.label}>EMAIL</label><input style={S.input} value={editForm.email} onChange={e => inp('email', e.target.value)} /></div>
                   <div style={S.field}>
                     <label style={S.label}>FUENTE</label>

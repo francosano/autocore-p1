@@ -6,6 +6,7 @@ import { supabase } from '../../supabase'
 import CrmShell from '../CrmShell'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
 import { fuenteLabel } from '../fuentes'
+import { waDigits } from '../../lib/phone'
 
 // ── Opportunity category palette ──────────────────────────────────────
 const CAT = {
@@ -55,7 +56,9 @@ const PERIODOS = [
 ]
 
 const pct = (a: number, b: number) => b > 0 ? Math.round(100 * a / b) : 0
-const waPhone = (t: string) => (t || '').replace(/\D/g, '')
+// wa.me digits — E.164-normalizes US/VE numbers (legacy values fall back to a
+// plain digit strip). See app/lib/phone.ts.
+const waPhone = (t: string) => waDigits(t || '')
 const fLabel = (k?: string | null) => fuenteLabel(k)
 const tidyModelo = (m?: string | null) => (m || 'Sin modelo')
 const fmtAge = (min: number) => {
