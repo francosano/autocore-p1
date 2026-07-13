@@ -55,51 +55,94 @@ if ($dst -notmatch 'mrxpvutodyomldnjokau') {
     if ($ok -ne 'SI') { throw 'Cancelado por seguridad.' }
 }
 
-# ── 1) Dump: public schema, structure only, portable across Supabase projects.
+# Runs psql against $dst with -f $file, capturing ALL output to a log file.
+# ErrorActionPreference is forced to Continue so PowerShell does not treat
+# psql's stderr (benign NOTICE/ERROR lines) as a fatal, script-aborting error.
+function Invoke-PsqlFile([string]$file, [string]$log) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $psql --set ON_ERROR_STOP=off -v ON_ERROR_STOP=0 -f $file $dst *>$log
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
+# ── 1) Dump: public schema, structure only. NO --clean (target is empty; DROP
+#       statements would just spew "does not exist"). Portable across Supabase.
 Write-Host ''
-Write-Host '1/2  pg_dump (solo lectura en la fuente)...' -ForegroundColor Cyan
+Write-Host '1/3  pg_dump (solo lectura en la fuente)...' -ForegroundColor Cyan
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 & $pgDump `
     --schema-only `
     --schema=public `
     --no-owner `
     --no-privileges `
     --no-comments `
-    --if-exists --clean `
     --quote-all-identifiers `
     --file $dumpFile `
-    $src
-if ($LASTEXITCODE -ne 0) { throw "pg_dump fallo (exit $LASTEXITCODE)." }
+    $src 2>$null
+$dumpExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
+if ($dumpExit -ne 0 -or -not (Test-Path $dumpFile)) { throw "pg_dump fallo (exit $dumpExit). Revisa la cadena FUENTE / password." }
 $lines = (Get-Content $dumpFile | Measure-Object -Line).Lines
-Write-Host "     OK  volcado $lines lineas -> $dumpFile" -ForegroundColor Green
+Write-Host "     OK  volcado $lines lineas" -ForegroundColor Green
 
-# ── 2) Restore into P1. ON_ERROR_STOP off: benign 'already exists' /
-#       extension-owned lines are expected; real errors are printed to review.
+# ── 2) Reset P1's public schema to a clean slate, then restore. This makes the
+#       clone repeatable and wipes any half-finished previous attempt. Dropping
+#       public only affects USER objects — Supabase's managed objects live in
+#       other schemas (auth, storage, ...).
 Write-Host ''
-Write-Host '2/2  psql restore -> P1...' -ForegroundColor Cyan
-& $psql --set ON_ERROR_STOP=off --single-transaction=off -f $dumpFile $dst 2>&1 |
-    Tee-Object -Variable restoreLog | Out-Null
-$errCount = ($restoreLog | Select-String -Pattern '^psql:.*ERROR' ).Count
-Write-Host "     restore terminado ($errCount lineas de ERROR; revisa abajo si hay)" -ForegroundColor Green
-if ($errCount -gt 0) {
-    Write-Host '--- ERRORES (algunos "already exists" son normales) ---' -ForegroundColor Yellow
-    $restoreLog | Select-String -Pattern '^psql:.*ERROR' | Select-Object -First 40 | ForEach-Object { $_.Line }
+Write-Host '2/3  Limpiando public en P1 y restaurando...' -ForegroundColor Cyan
+$resetSql  = Join-Path $here '_reset.sql'
+$resetLog  = Join-Path $here '_reset.log'
+$restoreLog = Join-Path $here '_restore.log'
+$grantLog  = Join-Path $here '_grant.log'
+@'
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON SCHEMA public TO postgres;
+'@ | Out-File -FilePath $resetSql -Encoding ascii
+Invoke-PsqlFile $resetSql $resetLog
+Invoke-PsqlFile $dumpFile $restoreLog
+
+$errLines = @(Select-String -Path $restoreLog -Pattern 'ERROR:' -ErrorAction SilentlyContinue)
+Write-Host "     restore terminado ($($errLines.Count) lineas con ERROR)" -ForegroundColor Green
+if ($errLines.Count -gt 0) {
+    Write-Host '--- ERRORES (revisar; "already exists" seria raro tras el reset) ---' -ForegroundColor Yellow
+    $errLines | Select-Object -First 30 | ForEach-Object { $_.Line.Trim() }
 }
 
-# Grants that Supabase relies on but a public-only dump can miss.
+# ── 3) Base grants Supabase relies on (the dump omits privileges).
 Write-Host ''
-Write-Host 'Aplicando grants base a anon/authenticated/service_role...' -ForegroundColor Cyan
-$grants = @'
+Write-Host '3/3  Aplicando grants base + reload...' -ForegroundColor Cyan
+$grantSql = Join-Path $here '_grant.sql'
+@'
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
-'@
-$grants | & $psql --set ON_ERROR_STOP=off -f - $dst 2>&1 | Out-Null
+'@ | Out-File -FilePath $grantSql -Encoding ascii
+Invoke-PsqlFile $grantSql $grantLog
 
-Remove-Item $dumpFile -ErrorAction SilentlyContinue
+# Quick sanity check: does has_perm exist now, and how many tables landed?
+$checkSql = Join-Path $here '_check.sql'
+$checkLog = Join-Path $here '_check.log'
+@"
+SELECT 'tables=' || count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';
+SELECT 'has_perm=' || count(*) FROM pg_proc WHERE proname='has_perm';
+"@ | Out-File -FilePath $checkSql -Encoding ascii
+Invoke-PsqlFile $checkSql $checkLog
+
+Remove-Item $resetSql,$grantSql,$checkSql,$resetLog,$restoreLog,$grantLog -ErrorAction SilentlyContinue
 Write-Host ''
-Write-Host 'Listo. Verifica en el SQL editor de P1:' -ForegroundColor Green
-Write-Host "  select has_perm('npa_can_admin');   -- debe devolver true/false, no error"
+Write-Host '=== Resultado ===' -ForegroundColor Green
+Get-Content $checkLog | Where-Object { $_ -match 'tables=|has_perm=' } | ForEach-Object { Write-Host "  $($_.Trim())" }
+Remove-Item $checkLog,$dumpFile -ErrorAction SilentlyContinue
 Write-Host ''
+Write-Host 'Si ves tables=~30 y has_perm=1, el clon funciono.' -ForegroundColor Green
 Write-Host 'Siguiente: corre migrations 001-005, luego scripts\seed-admin.sql.'
