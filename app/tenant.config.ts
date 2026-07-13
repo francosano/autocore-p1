@@ -21,6 +21,10 @@ export const TENANT = {
   marcas: [] as string[],   // multi-brand used cars — populated later; NO KIA default anywhere
   dominio: 'p1.motocentro2.com', // provisional; may change
   sitioWeb: 'https://www.p1autosales.com', // dealer's existing public website
+  // Sales WhatsApp for buyer contact (digits only, intl format, e.g.
+  // '17865551234' for US +1 or '584121234567' for VE). Empty = the generated
+  // Marketplace descriptions use a Messenger CTA instead of a wa.me link.
+  whatsappVentas: '',
   workers: {
     whatsapp: '',    // empty = feature disabled; wire real p1-* URLs when Workers are deployed
     adminUsers: '',

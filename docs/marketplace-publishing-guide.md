@@ -46,7 +46,33 @@ Tienes dos caminos para crear el borrador:
 
 > Sobre las fotos: se guardan en el borrador como referencia, pero **Facebook
 > exige adjuntarlas a mano** al publicar (la extensión no puede subir imágenes).
-> Ten las fotos del vehículo listas en una carpeta.
+
+### Descargar TODAS las fotos a tu PC (sin capturas de pantalla)
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\site-sync-local.ps1 -Fotos
+```
+
+- Baja la galería completa de **todos** los vehículos del sitio a
+  `autocore-p1\fotos\`, una carpeta por vehículo (ej.
+  `2022-HYUNDAI-TUCSON_D057217\01.jpg, 02.jpg, ...`) y abre la carpeta al
+  terminar. No necesita ninguna clave.
+- Re-ejecutar solo baja lo nuevo (lo ya descargado se salta). Tarda unos
+  minutos la primera vez.
+- Al publicar en Facebook: botón de fotos → navega a la carpeta del vehículo →
+  selecciona todas → listo.
+
+### Generar la descripción (lista para pegar)
+
+- **Automática:** al usar **"Crear borrador FB"** desde Importar, el borrador ya
+  trae una descripción bilingüe (EN + ES) generada con los datos reales del
+  vehículo (millas, motor, transmisión, VIN) y una llamada a la acción.
+- **Manual:** en el modal de CRM → Marketplace, botón **"Generar descripción"**.
+- **Tu WhatsApp en la descripción:** pon tu número en
+  `app/tenant.config.ts` → `whatsappVentas` (solo dígitos, ej. `17865551234`)
+  y reconstruye/redeploya. Con eso cada descripción incluye tu enlace
+  `https://wa.me/...` para que el cliente te escriba directo. Sin número, la
+  descripción invita a escribir por Messenger.
 
 ---
 

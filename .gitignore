@@ -38,3 +38,6 @@ next-env.d.ts
 # transient schema dumps + downloaded PG client binaries
 /scripts/prod-public-schema.sql
 /scripts/pgtools/pgsql/
+
+# downloaded vehicle photo galleries (site-sync-local.ps1 -Fotos)
+/fotos/

@@ -13,7 +13,7 @@
 // (defaults to the P1 project).
 // ═══════════════════════════════════════════════════════════════════════════
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, readFileSync, unlinkSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSync } from '../workers/p1-site-sync/src/worker.js';
@@ -59,9 +59,36 @@ globalThis.fetch = async (url, init = {}) => {
 };
 
 const dry = process.argv.includes('--dry');
+const fotosMode = process.argv.includes('--fotos');
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-if (!dry && !serviceKey) {
+// ── --fotos: download every listing's photo gallery to .\fotos\<vehiculo>\ ──
+// Crawls the public site only (no Supabase, no keys needed). Skips photos
+// already on disk, so re-runs are fast and only fetch what's new.
+const FOTOS_DIR = join(process.cwd(), 'fotos');
+const safeName = (s) => String(s || 'vehiculo').replace(/[^A-Za-z0-9 _-]+/g, '').trim().replace(/\s+/g, '-').slice(0, 60);
+const stockFromUrl = (u) => (String(u).replace(/\/+$/, '').split('/').pop() || 'sin-stock').toUpperCase();
+
+function downloadPhoto(url, filePath) {
+  // curl -o writes binary directly to disk (the fetch shim is text-only).
+  execFileSync('curl.exe', ['-sS', '-L', '--max-time', '90', '-o', filePath, url], { windowsHide: true });
+}
+
+async function saveListingPhotos(listing) {
+  const folderName = `${safeName(listing.titulo)}_${stockFromUrl(listing.source_url)}`;
+  const dir = join(FOTOS_DIR, folderName);
+  mkdirSync(dir, { recursive: true });
+  const fotos = Array.isArray(listing.fotos) ? listing.fotos : [];
+  let downloaded = 0;
+  for (let i = 0; i < fotos.length; i++) {
+    const file = join(dir, String(i + 1).padStart(2, '0') + '.jpg');
+    if (existsSync(file)) continue;
+    try { downloadPhoto(fotos[i], file); downloaded++; } catch { /* skip broken photo */ }
+  }
+  console.log(`[fotos] ${folderName}: ${fotos.length} fotos (${downloaded} nuevas)`);
+}
+
+if (!dry && !fotosMode && !serviceKey) {
   console.error('Falta SUPABASE_SERVICE_ROLE_KEY (o usa --dry para probar sin escribir).');
   console.error('Recomendado: powershell -ExecutionPolicy Bypass -File scripts\\site-sync-local.ps1');
   process.exit(1);
@@ -71,13 +98,15 @@ const env = {
   SUPABASE_URL: (process.env.SUPABASE_URL || 'https://mrxpvutodyomldnjokau.supabase.co').trim(),
   SUPABASE_SERVICE_ROLE_KEY: serviceKey,
   SITEMAP_URL: 'https://www.p1autosales.com/inventory_usedcars-sitemap.xml',
-  FETCH_DELAY_MS: '1500',
+  FETCH_DELAY_MS: fotosMode ? '800' : '1500',
   USER_AGENT: 'AutoCoreP1-SiteSync/1.0 (local; inventory sync; contact: franco.sano@cefinternational.com)',
-  DRY_RUN: dry ? '1' : '',
+  // --fotos runs as a crawl-only pass (no Supabase writes) + photo download.
+  DRY_RUN: (dry || fotosMode) ? '1' : '',
+  ON_LISTING: fotosMode ? saveListingPhotos : undefined,
 };
 
 // ── Preflight: confirm the service key actually authenticates before crawling.
-if (!dry) {
+if (!dry && !fotosMode) {
   const masked = serviceKey.length > 12
     ? `${serviceKey.slice(0, 6)}…${serviceKey.slice(-4)} (len ${serviceKey.length})`
     : `(len ${serviceKey.length})`;
@@ -105,7 +134,12 @@ if (!dry) {
   }
 }
 
-console.log(dry ? 'Sync LOCAL (dry run — sin escrituras)...' : 'Sync LOCAL → site_inventory_staging...');
+console.log(
+  fotosMode ? `Descargando fotos de todo el inventario → ${FOTOS_DIR}\\ ...`
+    : dry ? 'Sync LOCAL (dry run — sin escrituras)...'
+    : 'Sync LOCAL → site_inventory_staging...'
+);
 const result = await runSync(env);
 console.log(JSON.stringify(result, null, 2));
+if (fotosMode) console.log(`Fotos guardadas en: ${FOTOS_DIR}`);
 if (result.failed > 0) process.exitCode = 2;

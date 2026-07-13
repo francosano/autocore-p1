@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../supabase'
 import NavBar from '../../components/NavBar'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
+import { buildFbDescription } from '../../lib/fbDescription'
 
 interface StagingRow {
   id: string
@@ -189,14 +190,27 @@ export default function ImportarPage() {
   }
 
   // Seed a Facebook Marketplace draft (fb_listings) from a scraped row.
+  // The description is generated ready-to-paste (bilingual + WhatsApp CTA)
+  // from the REAL scraped specs — see app/lib/fbDescription.ts.
   const onCrearBorradorFB = async (r: StagingRow) => {
     if (acting) return
     setActing(r.id)
-    const descripcion = [
-      r.titulo,
-      r.millas != null ? `Millas: ${fmtMiles(r.millas)}` : null,
-      r.vin ? `VIN: ${r.vin}` : null,
-    ].filter(Boolean).join(' · ')
+    const car = (r.raw && r.raw.jsonld_car) || {}
+    const fields = (r.raw && r.raw.fields) || {}
+    const descripcion = buildFbDescription({
+      titulo: r.titulo || [r.marca, r.modelo].filter(Boolean).join(' ') || 'Vehículo',
+      precioUsd: r.precio_usd,
+      millas: r.millas,
+      vin: r.vin,
+      bodyType: car.bodyType || null,
+      fuel: car.fuelType || null,
+      transmission: car.vehicleTransmission || fields['Transmission'] || null,
+      engine: car.vehicleEngine || fields['Engine'] || null,
+      colorExterior: car.color || fields['Exterior Color'] || null,
+      colorInterior: fields['Interior Color'] || null,
+      drivetrain: fields['Drivetrain'] || null,
+      trim: fields['Trim'] || null,
+    })
     const { error } = await (supabase.from('fb_listings').insert({
       inventory_vin: r.status === 'imported' ? r.imported_inventory_ref : null,
       titulo: r.titulo || [r.marca, r.modelo].filter(Boolean).join(' ') || 'Publicación',

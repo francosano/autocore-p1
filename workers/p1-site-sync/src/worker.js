@@ -63,6 +63,11 @@ export async function runSync(env) {
       const html = await fetchText(loc, ua);
       const listing = parseListing(loc, html);
       parsed++;
+      // Optional per-listing hook (used by the LOCAL runner, e.g. to download
+      // photos). Never set on the deployed Worker.
+      if (env.ON_LISTING) {
+        try { await env.ON_LISTING(listing); } catch { /* hook errors are non-fatal */ }
+      }
       if (!dry) {
         const outcome = await upsertStaging(env, listing);
         if (outcome === 'new') created++;

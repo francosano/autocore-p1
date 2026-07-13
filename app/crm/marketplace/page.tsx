@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../supabase'
 import CrmShell from '../CrmShell'
 import { useNPAPermissions } from '../../components/useNPAPermissions'
+import { buildFbDescription } from '../../lib/fbDescription'
 
 interface Listing {
   id: string
@@ -167,8 +168,28 @@ function ListingModal({ listing, userId, onClose, onSaved }: {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={s.label}>Descripción</label>
-          <textarea style={{ ...s.input, minHeight: '110px', resize: 'vertical' as const }} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Detalles del vehículo para la publicación de Marketplace..." />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <label style={s.label}>Descripción</label>
+            <button
+              type="button"
+              onClick={() => {
+                const u = inv.find(x => x.vin === form.inventory_vin)
+                setForm(f => ({
+                  ...f,
+                  descripcion: buildFbDescription({
+                    titulo: f.titulo.trim() || (u ? [u.modelo, u.año, u.color].filter(Boolean).join(' ') : 'Vehículo'),
+                    precioUsd: f.precio_usd === '' ? null : Number(f.precio_usd),
+                    vin: form.inventory_vin || null,
+                    colorExterior: u?.color || null,
+                  }),
+                }))
+              }}
+              style={{ background: 'transparent', border: '1px solid var(--brand-primary)', color: 'var(--brand-primary)', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Generar descripción
+            </button>
+          </div>
+          <textarea style={{ ...s.input, minHeight: '150px', resize: 'vertical' as const }} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Detalles del vehículo... o usa Generar descripción (bilingüe + CTA de WhatsApp)." />
         </div>
 
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
