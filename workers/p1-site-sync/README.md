@@ -4,6 +4,25 @@ Cloudflare Worker that crawls the Prime One public website's used-car
 inventory and upserts each listing into Supabase `site_inventory_staging`.
 Staff then review and promote rows in AutoCore P1 → Inventario → Importar.
 
+> **STATUS 2026-07-13 — Worker fetches are blocked; use the local runner.**
+> www.p1autosales.com's Cloudflare bot protection returns **403** to fetches
+> coming from Workers IP space (residential connections are served fine, which
+> is why the recon worked). The deployed Worker's `/sync` therefore fails at
+> the sitemap fetch. Until the dealer allowlists the crawler, run the SAME
+> sync locally from Franco's machine:
+>
+> ```
+> powershell -ExecutionPolicy Bypass -File scripts\site-sync-local.ps1        # real run
+> powershell -ExecutionPolicy Bypass -File scripts\site-sync-local.ps1 -Dry   # parse-only test
+> ```
+>
+> (`scripts/site-sync-local.mjs` imports and runs the Worker's own `runSync`,
+> so parser fixes apply to both paths.) **Clean long-term fix:** ask Prime One
+> to allowlist the `AutoCoreP1-SiteSync` User-Agent — or to provide an
+> inventory feed — in their Cloudflare/DealerCenter settings; they are a
+> business partner, so this is a reasonable ask. Do NOT attempt to evade the
+> bot protection.
+
 **Nothing auto-imports.** The Worker only writes to the staging table.
 Scraped data is untrusted input; promotion to `inventory_units` is a human
 action in the review UI.

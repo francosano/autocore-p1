@@ -26,8 +26,10 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === 'POST' && url.pathname === '/sync') {
-      const secret = request.headers.get('x-sync-secret');
-      if (!env.SYNC_SECRET || secret !== env.SYNC_SECRET) {
+      // trim() both sides: secrets set via Windows pipes can carry \r\n.
+      const secret = (request.headers.get('x-sync-secret') || '').trim();
+      const expected = (env.SYNC_SECRET || '').trim();
+      if (!expected || secret !== expected) {
         return json({ ok: false, error: 'unauthorized' }, 401);
       }
       try {
@@ -43,22 +45,32 @@ export default {
 };
 
 // ── Orchestration ────────────────────────────────────────────────────────────
-async function runSync(env) {
+// Exported so scripts/site-sync-local.mjs can run the SAME sync from Franco's
+// machine (the dealer site's Cloudflare bot protection 403s fetches from
+// Workers IP space, but serves residential IPs fine). DRY_RUN='1' parses
+// without writing to Supabase.
+export async function runSync(env) {
   const delay = parseInt(env.FETCH_DELAY_MS || '1500', 10);
   const ua = env.USER_AGENT || 'AutoCoreP1-SiteSync/1.0';
+  const dry = String(env.DRY_RUN || '') === '1';
 
   const urls = await fetchSitemapUrls(env.SITEMAP_URL, ua);
   const seen = new Set();
-  let created = 0, updated = 0, unchanged = 0, failed = 0;
+  let created = 0, updated = 0, unchanged = 0, failed = 0, parsed = 0;
 
   for (const loc of urls) {
     try {
       const html = await fetchText(loc, ua);
       const listing = parseListing(loc, html);
-      const outcome = await upsertStaging(env, listing);
-      if (outcome === 'new') created++;
-      else if (outcome === 'updated') updated++;
-      else unchanged++;
+      parsed++;
+      if (!dry) {
+        const outcome = await upsertStaging(env, listing);
+        if (outcome === 'new') created++;
+        else if (outcome === 'updated') updated++;
+        else unchanged++;
+      } else {
+        console.log('[dry]', listing.titulo, '| $' + listing.precio_usd, '|', listing.millas, 'mi |', listing.vin, '|', listing.fotos.length, 'fotos');
+      }
       seen.add(normalizeUrl(loc));
     } catch (e) {
       failed++;
@@ -69,9 +81,9 @@ async function runSync(env) {
 
   // Mark rows that vanished from the sitemap as removed_from_site (only those
   // not already imported/ignored — we don't resurrect human decisions).
-  const removed = await markRemoved(env, [...seen]);
+  const removed = dry ? 0 : await markRemoved(env, [...seen]);
 
-  return { total: urls.length, created, updated, unchanged, failed, removed };
+  return { total: urls.length, parsed, created, updated, unchanged, failed, removed, dry_run: dry };
 }
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
@@ -279,12 +291,15 @@ async function markRemoved(env, seenUrls) {
 }
 
 async function sb(env, pathAndQuery, init) {
-  const base = env.SUPABASE_URL.replace(/\/$/, '');
+  // trim(): secrets set via Windows pipes can carry \r\n, which breaks URLs
+  // and Authorization headers.
+  const base = (env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+  const key = (env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const res = await fetch(`${base}/rest/v1/${pathAndQuery}`, {
     ...init,
     headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       ...(init && init.headers),
     },
@@ -298,13 +313,22 @@ async function sb(env, pathAndQuery, init) {
 }
 
 // ── HTTP helpers ─────────────────────────────────────────────────────────────
+// One polite retry after a long pause: Cloudflare's bot scoring throws
+// sporadic 403/429s mid-crawl that clear on their own (seen ~3/50 pages).
 async function fetchText(url, ua) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': ua, Accept: 'text/html,application/xml' },
-    redirect: 'follow',
-  });
-  if (!res.ok) throw new Error(`GET ${url} → HTTP ${res.status}`);
-  return res.text();
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': ua, Accept: 'text/html,application/xml' },
+      redirect: 'follow',
+    });
+    if (res.ok) return res.text();
+    const retryable = res.status === 403 || res.status === 429 || res.status >= 500;
+    if (attempt === 0 && retryable) {
+      await sleep(8000 + Math.floor(Math.random() * 4000));
+      continue;
+    }
+    throw new Error(`GET ${url} → HTTP ${res.status}`);
+  }
 }
 
 function normalizeUrl(u) {
