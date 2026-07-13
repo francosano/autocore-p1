@@ -728,6 +728,8 @@ export default function NavBar() {
 
     { label: 'Clientes',    path: '/clientes',   show: permissions.npa_can_view_clientes },
 
+    { label: 'Comisiones',  path: '/comisiones', show: permissions.npa_can_admin },
+
     { label: 'Configuración', path: '/settings', show: permissions.npa_can_admin },
 
   ]
@@ -1112,9 +1114,23 @@ export default function NavBar() {
 
               )}
 
-              {/* Configuración */}
+              {/* Comisiones */}
 
               {TOP_NAV[4].show && (
+
+                <button onClick={() => router.push('/comisiones')}
+
+                  style={navBtnStyle(pathname === '/comisiones' || pathname.startsWith('/comisiones/'))}>
+
+                  Comisiones
+
+                </button>
+
+              )}
+
+              {/* Configuración */}
+
+              {TOP_NAV[5].show && (
 
                 <button onClick={() => router.push('/settings')}
 

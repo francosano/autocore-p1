@@ -618,6 +618,15 @@ export default function LeadDetailModal({ lead, actividades, crmUsers, userId, S
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {etapaEdit === 'cerrado_ganado' && npaPerms.npa_can_admin && (
+                <button
+                  title="Registrar la comisión de esta venta en el módulo Comisiones"
+                  style={{ ...S.btnSecondary, fontSize: '13px', color: 'var(--brand-primary)', borderColor: 'rgba(30,79,163,0.4)', cursor: 'pointer' }}
+                  onClick={() => { window.location.href = '/comisiones?lead=' + lead.id }}
+                >
+                  Registrar comisión
+                </button>
+              )}
               {lead.telefono && !String(lead.telefono).startsWith('kommo_') && (
                 <button
                   title="Abre el chat del cliente y marca el lead como contactado"

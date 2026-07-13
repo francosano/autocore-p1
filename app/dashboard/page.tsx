@@ -32,7 +32,7 @@ import NavBar from '../components/NavBar'
 
 import { useNPAPermissions } from '../components/useNPAPermissions'
 
-import { Target, Car, Users } from 'lucide-react'
+import { Target, Car, Users, DollarSign } from 'lucide-react'
 
 
 
@@ -397,6 +397,16 @@ export default function DashboardPage() {
       icon: Users, show: permissions.npa_can_view_clientes,
 
       onClick: () => router.push('/clientes'),
+
+    },
+
+    {
+
+      key: 'comisiones', title: 'Comisiones', description: 'Comisiones por venta cerrada',
+
+      icon: DollarSign, show: permissions.npa_can_admin,
+
+      onClick: () => router.push('/comisiones'),
 
     },
 
