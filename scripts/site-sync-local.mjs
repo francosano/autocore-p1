@@ -12,33 +12,49 @@
 // Env: SUPABASE_SERVICE_ROLE_KEY (required unless --dry), SUPABASE_URL
 // (defaults to the P1 project).
 // ═══════════════════════════════════════════════════════════════════════════
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { runSync } from '../workers/p1-site-sync/src/worker.js';
 
-const execFileP = promisify(execFile);
-
-// The dealer site's Cloudflare rules serve our identified User-Agent via
-// curl (verified 200) but challenge Node's HTTP stack (403). Route ONLY the
-// dealer-site fetches through curl.exe — same honest UA, no spoofing.
-// Supabase REST calls keep using the normal fetch.
-const realFetch = globalThis.fetch;
-globalThis.fetch = async (url, init) => {
+// Route ALL network through curl.exe. Two reasons:
+//   1. The dealer site's Cloudflare serves our honest UA via curl (200) but
+//      challenges Node's HTTP stack (403).
+//   2. Node 25 + undici + spawning curl subprocesses is unstable on Windows
+//      (intermittent dropped headers -> Supabase "No API key found", and even
+//      libuv crashes). Using curl for the Supabase REST calls too removes
+//      undici from the hot path entirely and is rock-solid.
+// The deployed Cloudflare Worker never loads this file — it uses native fetch.
+let tmpN = 0;
+globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
-  if (!u.includes('p1autosales.com')) return realFetch(url, init);
-  const ua = (init && init.headers && init.headers['User-Agent']) || 'AutoCoreP1-SiteSync/1.0';
+  const method = (init.method || 'GET').toUpperCase();
+  const headers = init.headers || {};
+  const stamp = `${process.pid}-${Date.now()}-${tmpN++}`;
+  const outFile = join(tmpdir(), `acp1-out-${stamp}.tmp`);
+  const bodyFile = init.body != null ? join(tmpdir(), `acp1-body-${stamp}.tmp`) : null;
+
+  const args = ['-sS', '-L', '--max-time', '90', '-X', method, '-o', outFile, '-w', '%{http_code}'];
+  for (const [k, v] of Object.entries(headers)) args.push('-H', `${k}: ${v}`);
+  if (bodyFile) {
+    writeFileSync(bodyFile, String(init.body));
+    args.push('--data-binary', `@${bodyFile}`);
+  }
+  args.push(u);
+
   try {
-    const { stdout } = await execFileP(
-      'curl.exe',
-      ['-sS', '-L', '-A', ua, '-H', 'Accept: text/html,application/xml', '-w', '\n%{http_code}', u],
-      { maxBuffer: 32 * 1024 * 1024, windowsHide: true }
-    );
-    const cut = stdout.lastIndexOf('\n');
-    const body = stdout.slice(0, cut);
-    const status = parseInt(stdout.slice(cut + 1).trim(), 10) || 0;
-    return new Response(body, { status });
+    const status = parseInt(
+      String(execFileSync('curl.exe', args, { maxBuffer: 64 * 1024 * 1024, windowsHide: true })).trim(),
+      10
+    ) || 0;
+    const text = readFileSync(outFile, 'utf8');
+    return new Response(text, { status });
   } catch (e) {
-    return new Response(String(e && e.message || e), { status: 599 });
+    return new Response(String((e && e.message) || e), { status: 599 });
+  } finally {
+    try { unlinkSync(outFile); } catch { /* ignore */ }
+    if (bodyFile) { try { unlinkSync(bodyFile); } catch { /* ignore */ } }
   }
 };
 
@@ -73,7 +89,7 @@ if (!dry) {
     process.exit(1);
   }
   try {
-    const r = await realFetch(`${env.SUPABASE_URL}/rest/v1/site_inventory_staging?select=id&limit=1`, {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/site_inventory_staging?select=id&limit=1`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
     });
     if (r.status === 401 || r.status === 403) {
