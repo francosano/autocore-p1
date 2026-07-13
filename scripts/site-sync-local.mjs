@@ -60,6 +60,35 @@ const env = {
   DRY_RUN: dry ? '1' : '',
 };
 
+// ── Preflight: confirm the service key actually authenticates before crawling.
+if (!dry) {
+  const masked = serviceKey.length > 12
+    ? `${serviceKey.slice(0, 6)}…${serviceKey.slice(-4)} (len ${serviceKey.length})`
+    : `(len ${serviceKey.length})`;
+  console.log('Preflight → Supabase:', env.SUPABASE_URL);
+  console.log('  service key:', masked);
+  const looksAnon = /"role":"anon"/.test(Buffer.from((serviceKey.split('.')[1] || ''), 'base64').toString('utf8'));
+  if (looksAnon) {
+    console.error('  ERROR: esa es la clave ANON, no la SERVICE_ROLE. Copia la clave "service_role" (secret) en Project Settings → API Keys.');
+    process.exit(1);
+  }
+  try {
+    const r = await realFetch(`${env.SUPABASE_URL}/rest/v1/site_inventory_staging?select=id&limit=1`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    });
+    if (r.status === 401 || r.status === 403) {
+      const body = await r.text().catch(() => '');
+      console.error(`  ERROR HTTP ${r.status}: la clave no autentica. ${body.slice(0, 160)}`);
+      console.error('  Revisa que sea la service_role de mrxpvutodyomldnjokau (Project Settings → API Keys → service_role → Reveal/Copy).');
+      process.exit(1);
+    }
+    console.log('  OK  autenticado (HTTP ' + r.status + ')');
+  } catch (e) {
+    console.error('  ERROR de red en preflight:', String(e && e.message || e));
+    process.exit(1);
+  }
+}
+
 console.log(dry ? 'Sync LOCAL (dry run — sin escrituras)...' : 'Sync LOCAL → site_inventory_staging...');
 const result = await runSync(env);
 console.log(JSON.stringify(result, null, 2));

@@ -295,6 +295,7 @@ async function sb(env, pathAndQuery, init) {
   // and Authorization headers.
   const base = (env.SUPABASE_URL || '').trim().replace(/\/$/, '');
   const key = (env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY vacia — configura el secreto del Worker o la variable de entorno.');
   const res = await fetch(`${base}/rest/v1/${pathAndQuery}`, {
     ...init,
     headers: {
