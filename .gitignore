@@ -34,3 +34,7 @@ next-env.d.ts
 # zips & backups
 *.zip
 *.bak
+
+# transient schema dumps + downloaded PG client binaries
+/scripts/prod-public-schema.sql
+/scripts/pgtools/pgsql/

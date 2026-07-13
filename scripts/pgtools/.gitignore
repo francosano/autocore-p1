@@ -1,0 +1,4 @@
+# PostgreSQL client binaries (pg_dump/psql) — 64 MB, downloaded on demand.
+# Re-fetch: EDB portable zip (see clone-schema instructions) into ./pgsql.
+pgsql/
+*.zip
