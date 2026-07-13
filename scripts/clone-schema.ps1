@@ -31,11 +31,22 @@ Write-Host 'Consigue cada cadena en Supabase -> boton Connect -> "Session pooler
 Write-Host 'Formato: postgresql://postgres.<ref>:<password>@aws-0-...pooler.supabase.com:5432/postgres' -ForegroundColor Gray
 Write-Host ''
 
-$src = Read-Host 'FUENTE (Motocentro / produccion) connection string'
-$src = $src.Trim()
-$dst = Read-Host 'DESTINO (P1: mrxpvutodyomldnjokau) connection string'
-$dst = $dst.Trim()
-if (-not $src -or -not $dst) { throw 'Faltan cadenas de conexion.' }
+function Read-Conn([string]$label) {
+    while ($true) {
+        $v = (Read-Host $label).Trim()
+        # Strip a wrapping pair of quotes if pasted with them.
+        if ($v.Length -ge 2 -and (($v[0] -eq '"' -and $v[-1] -eq '"') -or ($v[0] -eq "'" -and $v[-1] -eq "'"))) {
+            $v = $v.Substring(1, $v.Length - 2)
+        }
+        if ($v -match '^postgres(ql)?://') { return $v }
+        Write-Host '  Eso no es una cadena de conexion. Debe empezar con postgresql://' -ForegroundColor Yellow
+        Write-Host '  Supabase -> proyecto -> boton Connect (arriba) -> pestana "Session pooler" -> Copy.' -ForegroundColor Gray
+        Write-Host '  Reemplaza [YOUR-PASSWORD] por la contrasena real de la base de datos.' -ForegroundColor Gray
+    }
+}
+
+$src = Read-Conn 'FUENTE (Motocentro / produccion) connection string'
+$dst = Read-Conn 'DESTINO (P1: mrxpvutodyomldnjokau) connection string'
 
 if ($dst -notmatch 'mrxpvutodyomldnjokau') {
     Write-Host ''
