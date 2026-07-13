@@ -1,0 +1,27 @@
+name = "p1-claudia"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# ── Secrets (set with `wrangler secret put <NAME>`, never commit) ────────────
+#   ANTHROPIC_API_KEY           Claude API key (brain)
+#   CLAUDIA_SECRET              shared secret required on POST /draft
+#   SUPABASE_URL                https://mrxpvutodyomldnjokau.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   P1 service_role key (server only, NEVER client)
+#   WHATSAPP_TOKEN              Meta permanent access token
+#   WHATSAPP_PHONE_NUMBER_ID    Cloud API phone-number id
+#   WHATSAPP_VERIFY_TOKEN       any string; also typed into Meta's webhook UI
+#   WHATSAPP_APP_SECRET         Meta app secret (verifies inbound signatures)
+#
+# Non-secret config lives here. The CLAUDIA_* business facts are optional: when
+# unset, Claudia tells the buyer she'll confirm with the team instead of
+# guessing. Fill them in to make her fully autonomous.
+[vars]
+CLAUDIA_MODEL = "claude-opus-4-8"
+DEALER_NAME = "Prime One Auto Sales"
+DEALER_CITY = "Miami, FL"
+BROKER_NAME = "Franco"
+# CLAUDIA_HOURS = "Mon-Sat 9am-7pm, Sun by appointment"
+# CLAUDIA_FINANCING = "In-house + bank financing; we work with all credit"
+# CLAUDIA_WARRANTY = "Ask per vehicle"
+# CLAUDIA_TRADEIN = "Yes — send year, make, model and miles"
+# CLAUDIA_ADDRESS = "8391 NW 64th St, Miami, FL 33166"

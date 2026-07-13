@@ -1,0 +1,11 @@
+{
+  "name": "p1-claudia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Claudia — Prime One Auto Sales AI assistant (Claude brain + WhatsApp Cloud API webhook).",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}
