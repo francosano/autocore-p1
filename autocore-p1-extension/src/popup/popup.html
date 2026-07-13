@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AutoCore P1</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      width: 320px; margin: 0; padding: 14px;
+      font: 13px system-ui, -apple-system, sans-serif;
+      background: #0B0E14; color: #EAEDF2;
+    }
+    h1 { font-size: 14px; margin: 0 0 2px; letter-spacing: .04em; }
+    h1 span { color: #3D6BC4; }
+    .sub { font-size: 11px; color: #7B8694; margin-bottom: 12px; }
+    .card { background: #11151D; border: 1px solid #232A37; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #AEB6C2; margin-bottom: 4px; }
+    input[type=text], input[type=email], input[type=password], input[type=number] {
+      width: 100%; box-sizing: border-box; background: #0E121A; border: 1px solid #232A37;
+      border-radius: 6px; color: #EAEDF2; padding: 7px 9px; font-size: 12px; outline: none; margin-bottom: 8px;
+    }
+    button {
+      background: #1E4FA3; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    button.ghost { background: transparent; border: 1px solid #232A37; color: #AEB6C2; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 5px 0; }
+    .row .k { color: #7B8694; font-size: 11px; }
+    .row .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+    .err { color: #F0556A; font-size: 11px; margin-top: 6px; min-height: 14px; }
+    .warn { color: #E0A23C; }
+    .ok { color: #10B981; }
+    .hours { display: flex; gap: 6px; align-items: center; }
+    .hours input { width: 52px; margin-bottom: 0; }
+    hr { border: none; border-top: 1px solid #232A37; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>AutoCore <span>P1</span></h1>
+  <div class="sub">Puente Facebook Marketplace ↔ CRM</div>
+
+  <!-- Login (shown when logged out) -->
+  <div class="card" id="login-card" hidden>
+    <label>Correo (cuenta staff P1)</label>
+    <input type="email" id="email" autocomplete="username" />
+    <label>Contraseña</label>
+    <input type="password" id="password" autocomplete="current-password" />
+    <button id="login-btn">Iniciar sesión</button>
+    <div class="err" id="login-err"></div>
+  </div>
+
+  <!-- Session (shown when logged in) -->
+  <div class="card" id="session-card" hidden>
+    <div class="row"><span class="k">Sesión</span><span class="v" id="who"></span></div>
+    <div class="row"><span class="k">Conversaciones sincronizadas</span><span class="v" id="threads">0</span></div>
+    <div class="row"><span class="k">Mensajes sincronizados</span><span class="v" id="messages">0</span></div>
+    <div class="row"><span class="k">Respuestas en cola</span><span class="v" id="pending">0</span></div>
+    <div class="row"><span class="k">Envíos última hora</span><span class="v" id="sends">0</span></div>
+    <div class="row"><span class="k">Última sync</span><span class="v" id="lastsync">—</span></div>
+    <div class="err" id="status-err"></div>
+    <hr />
+    <button class="ghost" id="logout-btn">Cerrar sesión</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="card" id="controls-card" hidden>
+    <div class="toggle"><input type="checkbox" id="master" /><label style="margin:0">Extensión activa (master)</label></div>
+    <div class="toggle"><input type="checkbox" id="kill" /><label style="margin:0" class="warn">Kill switch (parar todo)</label></div>
+    <div class="toggle"><input type="checkbox" id="autosend" /><label style="margin:0">Auto-send de respuestas (riesgoso)</label></div>
+    <label>Máx. envíos por hora</label>
+    <input type="number" id="maxsends" min="1" max="60" />
+    <label>Horario permitido para auto-send</label>
+    <div class="hours">
+      <input type="number" id="hstart" min="0" max="23" /> <span>a</span> <input type="number" id="hend" min="0" max="23" /> <span style="color:#7B8694">h</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:ext": "npm --prefix autocore-p1-extension install --no-audit --no-fund && npm --prefix autocore-p1-extension run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0",

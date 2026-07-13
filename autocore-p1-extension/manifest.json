@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "AutoCore P1 — Facebook Marketplace",
+  "version": "0.1.0",
+  "description": "Puente humano-en-el-bucle entre Facebook Marketplace y AutoCore P1 (CRM). Lee conversaciones, asiste respuestas en cola y prellena publicaciones.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [
+    "https://www.facebook.com/*",
+    "https://mrxpvutodyomldnjokau.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AutoCore P1"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/marketplace/inbox*",
+        "https://www.facebook.com/messages/*"
+      ],
+      "js": ["content-inbox.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/marketplace/inbox*",
+        "https://www.facebook.com/messages/*"
+      ],
+      "js": ["content-reply.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.facebook.com/marketplace/create/vehicle*"],
+      "js": ["content-publisher.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
