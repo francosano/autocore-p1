@@ -3,12 +3,24 @@
 // self-contained IIFE in dist/ (shared src/ modules are inlined). Static
 // assets (manifest.json, popup.html) are copied. Run: `npm run build`.
 import { build } from 'esbuild';
-import { mkdirSync, copyFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, copyFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(root, 'dist');
+
+// Supabase publishable/anon key (public; RLS is the boundary). Sourced from
+// the SUPABASE_ANON_KEY env var or the gitignored `.anon-key` file written by
+// scripts/set-keys.ps1. REPLACE_ME builds still work but cannot log in.
+const keyFile = resolve(root, '.anon-key');
+const anonKey =
+  (process.env.SUPABASE_ANON_KEY || '').trim() ||
+  (existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : '') ||
+  'REPLACE_ME';
+if (anonKey === 'REPLACE_ME') {
+  console.warn('WARNING: no Supabase key found (.anon-key / SUPABASE_ANON_KEY) — extension login will be disabled.');
+}
 
 // Clean dist.
 if (existsSync(dist)) rmSync(dist, { recursive: true, force: true });
@@ -34,6 +46,7 @@ await build({
   sourcemap: false,
   legalComments: 'none',
   logLevel: 'info',
+  define: { __SUPABASE_ANON_KEY__: JSON.stringify(anonKey) },
 });
 
 // Copy static assets into dist.

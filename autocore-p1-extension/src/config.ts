@@ -1,13 +1,16 @@
 // TARGET: autocore-p1-extension/src/config.ts
 // Build-time configuration. The anon/publishable key is PUBLIC (RLS is the
-// security boundary) and is safe to embed — but replace it before building.
+// security boundary) and is safe to embed in the bundle.
 // The service-role key must NEVER appear here or anywhere in the extension.
 
 export const SUPABASE_URL = 'https://mrxpvutodyomldnjokau.supabase.co';
 
-// Replace before `npm run build`: Supabase dashboard → Project Settings →
-// API keys → the publishable/anon key (starts with sb_publishable_ / eyJ...).
-export const SUPABASE_ANON_KEY = 'REPLACE_ME';
+// Injected by build.mjs (esbuild define) from the gitignored `.anon-key`
+// file or the SUPABASE_ANON_KEY env var — write the key with
+// scripts/set-keys.ps1 (repo root) and rebuild. Falls back to 'REPLACE_ME',
+// which makes login fail loudly instead of silently.
+declare const __SUPABASE_ANON_KEY__: string;
+export const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
 
 // Poll cadence for fb_outbox. chrome.alarms enforces a 1-minute floor; the
 // handler adds 0–15s of jitter so requests are not perfectly periodic.
