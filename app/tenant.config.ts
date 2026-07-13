@@ -6,12 +6,18 @@
 // Legal identity fields (nombreLegal, rif, registroMercantil) are omitted on
 // purpose: P1 is CRM-only and generates no legal documents. Add them only if
 // a printable-document feature returns.
+// Business model (confirmed by Franco 2026-07-13): the dealer is Prime One
+// Auto Sales LLC, Miami FL (used cars + commercial trucks/vans, USD). Franco
+// operates AutoCore P1 as an INDEPENDENT third-party sales broker for that
+// dealer (commission per sale) — this system is the broker's CRM, not the
+// dealership's in-house tool. Inventory here mirrors the dealer's public
+// stock via the p1-site-sync importer.
 export const TENANT = {
   id: 'primeone',
   nombre: 'Prime One Auto Sales',
   nombreCorto: 'Prime One',
-  ciudad: 'Maracay',   // confirm with Franco
-  estado: 'Aragua',
+  ciudad: 'Miami',
+  estado: 'FL',
   marcas: [] as string[],   // multi-brand used cars — populated later; NO KIA default anywhere
   dominio: 'p1.motocentro2.com', // provisional; may change
   sitioWeb: 'https://www.p1autosales.com', // dealer's existing public website
