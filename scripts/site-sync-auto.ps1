@@ -1,5 +1,5 @@
 # TARGET: autocore-p1/scripts/site-sync-auto.ps1
-# Unattended inventory sync — run by Windows Task Scheduler, no prompts.
+# Unattended inventory sync - run by Windows Task Scheduler, no prompts.
 # Detects vehicles that entered or left the dealer's site and updates the
 # AutoCore P1 database (site_inventory_staging):
 #   new on the site       -> status 'new'
@@ -9,7 +9,7 @@
 #
 # The service-role key is read from a DPAPI-encrypted file created by
 # scripts/sync-setup-auto.ps1. DPAPI ties it to THIS Windows user on THIS
-# machine — another account (or another PC) cannot decrypt it, and the key
+# machine - another account (or another PC) cannot decrypt it, and the key
 # never lands in the repo.
 #
 # Run by hand any time:  powershell -ExecutionPolicy Bypass -File scripts\site-sync-auto.ps1
@@ -69,12 +69,20 @@ try {
 
     foreach ($l in ($out -split "`r?`n")) { if ($l.Trim()) { Write-Log $l.Trim() } }
 
-    if ($code -ne 0 -and $code -ne 2) {
-        Write-Log "sync: FALLO (exit $code)"
-        exit $code
+    # Exit codes from site-sync-local.mjs: 0 healthy, 2 some pages blocked but
+    # writes landed (routine - Cloudflare 403s), anything else = broken.
+    # Never collapse these into "OK": a job that writes nothing must look
+    # different from one that had no changes.
+    if ($code -eq 0) {
+        Write-Log 'sync: OK'
+        exit 0
     }
-    Write-Log 'sync: OK'
-    exit 0
+    if ($code -eq 2) {
+        Write-Log 'sync: OK con avisos - algunas paginas bloqueadas por Cloudflare; la proxima corrida las toma.'
+        exit 0
+    }
+    Write-Log "sync: FALLO (exit $code) - la base de datos NO se actualizo. Revisa los errores de arriba."
+    exit $code
 }
 catch {
     Write-Log "ERROR: $($_.Exception.Message)"

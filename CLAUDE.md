@@ -24,6 +24,12 @@ never call a Motocentro Worker.
 ## Hard rules
 - NEVER `git add .` — stage specific files only. Never glob patterns.
 - NEVER write TS/UTF-8 source with PowerShell Set-Content/WriteAllText.
+- .ps1 files must be pure ASCII. Windows PowerShell 5.1 reads BOM-less files
+  as CP1252, so a UTF-8 em-dash becomes `â€”` whose last byte is a smart quote
+  `”` — which PS accepts as a STRING DELIMITER. One `—` inside a double-quoted
+  string silently breaks the whole script (it parses fine in a comment, so it
+  hides). Use `-`, `->`, `...`. Parse-check after editing:
+  `[System.Management.Automation.Language.Parser]::ParseFile($p,[ref]$null,[ref]$errs)`
 - Static export constraints: no dynamic routes — use query-string routing;
   navigate with `window.location.href`, not router.push; wrap useSearchParams
   in <Suspense>.

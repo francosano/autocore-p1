@@ -49,7 +49,13 @@ globalThis.fetch = async (url, init = {}) => {
       10
     ) || 0;
     const text = readFileSync(outFile, 'utf8');
-    return new Response(text, { status });
+    // 204/205/304 are "null body status" codes: `new Response(body, {status:204})`
+    // throws a TypeError in undici unless body is null — even for ''. Supabase
+    // returns 204 on every PATCH/DELETE sent with `Prefer: return=minimal`, so
+    // passing the (empty) text here made every UPDATE fail as "Supabase 599".
+    // Inserts happened to work because they return 201 + a body.
+    const nullBodyStatus = status === 204 || status === 205 || status === 304;
+    return new Response(nullBodyStatus ? null : text, { status });
   } catch (e) {
     return new Response(String((e && e.message) || e), { status: 599 });
   } finally {
@@ -148,4 +154,25 @@ console.log(
 const result = await runSync(env);
 console.log(JSON.stringify(result, null, 2));
 if (fotosMode) console.log(`Fotos guardadas en: ${FOTOS_DIR}`);
-if (result.failed > 0) process.exitCode = 2;
+if (result.removal_skipped) console.error('AVISO: ' + result.removal_skipped);
+
+// Exit codes drive the unattended runner (site-sync-auto.ps1):
+//   0 = healthy
+//   2 = some pages blocked (Cloudflare 403s are routine) but writes landed
+//   3 = broken: nothing was written, or most of the run failed. NEVER report
+//       success here — a scheduled job that silently writes nothing looks
+//       identical to one that had no changes.
+if (!dry && !fotosMode) {
+  const wrote = result.created + result.updated + result.unchanged;
+  if (result.failed > 0 && wrote === 0) {
+    console.error('ERROR: ninguna fila se escribio en la base de datos — revisa los errores de arriba.');
+    process.exitCode = 3;
+  } else if (result.failed > result.total / 2) {
+    console.error(`ERROR: fallo la mayoria del crawl (${result.failed}/${result.total}).`);
+    process.exitCode = 3;
+  } else if (result.failed > 0) {
+    process.exitCode = 2;
+  }
+} else if (result.failed > 0) {
+  process.exitCode = 2;
+}

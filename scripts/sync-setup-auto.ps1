@@ -7,7 +7,7 @@
 #   1) Asks for the Supabase service-role key ONCE and saves it encrypted with
 #      Windows DPAPI to %LOCALAPPDATA%\AutoCoreP1\sync-key.dat. Only THIS
 #      Windows user on THIS machine can decrypt it. It never enters the repo.
-#      (Automation needs the key without a human to type it — this is the safe
+#      (Automation needs the key without a human to type it - this is the safe
 #      way to store it. Delete the file any time to revoke.)
 #   2) Registers a Windows Scheduled Task that runs site-sync-auto.ps1 daily.
 #
@@ -28,7 +28,7 @@ $keyFile = Join-Path $dataDir 'sync-key.dat'
 if (-not (Test-Path $runner)) { throw "No se encontro $runner" }
 if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
 
-# ── 1) Save the key (encrypted) ────────────────────────────────────────────
+# -- 1) Save the key (encrypted) --------------------------------------------
 if (Test-Path $keyFile) {
     Write-Host "Ya hay una clave guardada en $keyFile" -ForegroundColor Yellow
     $again = Read-Host 'Quieres reemplazarla? (s/N)'
@@ -46,7 +46,7 @@ if (-not (Test-Path $keyFile)) {
     Write-Host "Clave guardada cifrada en: $keyFile" -ForegroundColor Green
 }
 
-# ── 2) Register the scheduled task ─────────────────────────────────────────
+# -- 2) Register the scheduled task -----------------------------------------
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$runner`""
 $trigger = New-ScheduledTaskTrigger -Daily -At $Time
