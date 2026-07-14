@@ -41,3 +41,6 @@ next-env.d.ts
 
 # downloaded vehicle photo galleries (site-sync-local.ps1 -Fotos)
 /fotos/
+
+# local secret copies (CLAUDIA_SECRET etc.) - never commit
+/.secrets/
