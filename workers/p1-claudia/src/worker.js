@@ -53,16 +53,24 @@ export default {
 function health(env) {
   return json({
     service: 'p1-claudia',
-    brain: env.ANTHROPIC_API_KEY ? 'ready' : 'missing ANTHROPIC_API_KEY',
+    brain: cfg(env, 'ANTHROPIC_API_KEY') ? 'ready' : 'missing ANTHROPIC_API_KEY',
     whatsapp: whatsappConfigured(env) ? 'ready' : 'not configured',
   })
 }
 
 function whatsappConfigured(env) {
-  return !!(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID && env.WHATSAPP_VERIFY_TOKEN && env.WHATSAPP_APP_SECRET)
+  return !!(cfg(env, 'WHATSAPP_TOKEN') && cfg(env, 'WHATSAPP_PHONE_NUMBER_ID') && cfg(env, 'WHATSAPP_VERIFY_TOKEN') && cfg(env, 'WHATSAPP_APP_SECRET'))
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+// Read a secret/var, trimmed. Secrets piped into `wrangler secret put` on
+// Windows arrive with a trailing \r\n, which silently breaks URLs and
+// Authorization headers (this exact bug bit p1-site-sync). Always read
+// config through here, never off `env` directly.
+function cfg(env, key) {
+  return String(env[key] || '').trim()
+}
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8' } })
 }
@@ -101,12 +109,12 @@ async function draftReply(env, messages, vehicleHint) {
   const res = await fetch(ANTHROPIC_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': env.ANTHROPIC_API_KEY,
+      'x-api-key': cfg(env, 'ANTHROPIC_API_KEY'),
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: env.CLAUDIA_MODEL || 'claude-opus-4-8',
+      model: cfg(env, 'CLAUDIA_MODEL') || 'claude-opus-4-8',
       max_tokens: 1024,
       system,
       messages: trimmed,
@@ -126,8 +134,8 @@ const HANDOFF = 'Déjame confirmar eso con el equipo y te respondo enseguida. ¿
 
 // ── POST /draft — CRM "Suggest reply" + any external caller ─────────────────
 async function handleDraft(request, env) {
-  if (!env.ANTHROPIC_API_KEY) return json({ error: 'brain_not_configured' }, 503)
-  if (!env.CLAUDIA_SECRET || request.headers.get('x-claudia-secret') !== env.CLAUDIA_SECRET) {
+  if (!cfg(env, 'ANTHROPIC_API_KEY')) return json({ error: 'brain_not_configured' }, 503)
+  if (!cfg(env, 'CLAUDIA_SECRET') || (request.headers.get('x-claudia-secret') || '').trim() !== cfg(env, 'CLAUDIA_SECRET')) {
     return json({ error: 'unauthorized' }, 401)
   }
   let body
@@ -144,7 +152,7 @@ function verifyWebhook(url, env) {
   const mode = url.searchParams.get('hub.mode')
   const token = url.searchParams.get('hub.verify_token')
   const challenge = url.searchParams.get('hub.challenge')
-  if (mode === 'subscribe' && token === env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token === cfg(env, 'WHATSAPP_VERIFY_TOKEN')) {
     return new Response(challenge || '', { status: 200, headers: { 'content-type': 'text/plain' } })
   }
   return new Response('forbidden', { status: 403 })
@@ -157,7 +165,7 @@ async function handleInbound(request, env, ctx) {
 
   // Verify Meta's HMAC-SHA256 signature over the raw body.
   const sigHeader = request.headers.get('x-hub-signature-256') || ''
-  const ok = await verifySignature(env.WHATSAPP_APP_SECRET, raw, sigHeader)
+  const ok = await verifySignature(cfg(env, 'WHATSAPP_APP_SECRET'), raw, sigHeader)
   if (!ok) return new Response('bad signature', { status: 401 })
 
   let payload
@@ -243,9 +251,9 @@ async function handleOneMessage(env, m) {
 }
 
 async function sendWhatsApp(env, toPhone, text) {
-  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${cfg(env, 'WHATSAPP_PHONE_NUMBER_ID')}/messages`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'content-type': 'application/json' },
+    headers: { authorization: `Bearer ${cfg(env, 'WHATSAPP_TOKEN')}`, 'content-type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', to: toPhone, type: 'text', text: { body: text } }),
   })
   if (!res.ok) return null
@@ -254,18 +262,23 @@ async function sendWhatsApp(env, toPhone, text) {
 }
 
 // ── Supabase REST helpers (service role) ────────────────────────────────────
+// Base Supabase URL: trimmed, no trailing slash.
+function sbBase(env) {
+  return cfg(env, 'SUPABASE_URL').replace(/\/$/, '')
+}
+
 function sbHeaders(env, extra) {
   return Object.assign({
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: cfg(env, 'SUPABASE_SERVICE_ROLE_KEY'),
+    authorization: `Bearer ${cfg(env, 'SUPABASE_SERVICE_ROLE_KEY')}`,
     'content-type': 'application/json',
   }, extra || {})
 }
 
 async function fetchCatalog(env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return []
+  if (!sbBase(env) || !cfg(env, 'SUPABASE_SERVICE_ROLE_KEY')) return []
   // Public listing data only — never inventory_units (cost ledger).
-  const q = `${env.SUPABASE_URL}/rest/v1/site_inventory_staging` +
+  const q = `${sbBase(env)}/rest/v1/site_inventory_staging` +
     `?select=titulo,marca,modelo,anio,precio_usd,millas,vin&status=neq.removed_from_site&order=last_seen.desc&limit=80`
   const res = await fetch(q, { headers: sbHeaders(env) })
   if (!res.ok) return []
@@ -274,12 +287,12 @@ async function fetchCatalog(env) {
 
 async function upsertConversation(env, waPhone) {
   // Try to find an existing whatsapp conversation for this phone.
-  const findUrl = `${env.SUPABASE_URL}/rest/v1/crm_conversations` +
+  const findUrl = `${sbBase(env)}/rest/v1/crm_conversations` +
     `?select=id,lead_id,bot_active,bot_mode&canal=eq.whatsapp&wa_phone=eq.${encodeURIComponent(waPhone)}&limit=1`
   const found = await fetch(findUrl, { headers: sbHeaders(env) }).then((r) => r.ok ? r.json() : []).catch(() => [])
   if (Array.isArray(found) && found.length) return found[0]
 
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/crm_conversations`, {
+  const res = await fetch(`${sbBase(env)}/rest/v1/crm_conversations`, {
     method: 'POST',
     headers: sbHeaders(env, { prefer: 'return=representation' }),
     body: JSON.stringify({ wa_phone: waPhone, canal: 'whatsapp', status: 'open' }),
@@ -291,7 +304,7 @@ async function upsertConversation(env, waPhone) {
 
 // Returns true if a NEW row was inserted, false on unique-conflict (dup).
 async function insertMessage(env, row) {
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/crm_mensajes`, {
+  const res = await fetch(`${sbBase(env)}/rest/v1/crm_mensajes`, {
     method: 'POST',
     headers: sbHeaders(env, { prefer: 'return=minimal,resolution=ignore-duplicates' }),
     body: JSON.stringify(Object.assign({ canal: 'whatsapp' }, row)),
@@ -301,7 +314,7 @@ async function insertMessage(env, row) {
 }
 
 async function touchConversation(env, id, preview) {
-  await fetch(`${env.SUPABASE_URL}/rest/v1/crm_conversations?id=eq.${id}`, {
+  await fetch(`${sbBase(env)}/rest/v1/crm_conversations?id=eq.${id}`, {
     method: 'PATCH',
     headers: sbHeaders(env, { prefer: 'return=minimal' }),
     body: JSON.stringify({
@@ -312,7 +325,7 @@ async function touchConversation(env, id, preview) {
 }
 
 async function recentMessages(env, convoId) {
-  const q = `${env.SUPABASE_URL}/rest/v1/crm_mensajes` +
+  const q = `${sbBase(env)}/rest/v1/crm_mensajes` +
     `?select=direction,content,created_at&conversation_id=eq.${convoId}&order=created_at.desc&limit=${MAX_HISTORY}`
   const rows = await fetch(q, { headers: sbHeaders(env) }).then((r) => r.ok ? r.json() : []).catch(() => [])
   return (Array.isArray(rows) ? rows : [])
