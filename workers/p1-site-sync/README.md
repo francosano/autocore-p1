@@ -63,7 +63,9 @@ cd workers/p1-site-sync
 npx wrangler deploy
 ```
 
-The cron in `wrangler.toml` runs a full crawl daily at 07:30 UTC.
+The cron in `wrangler.toml` is **commented out** (free-plan 5-trigger cap), and
+the deployed Worker is 403'd by the dealer's Cloudflare anyway — see
+*Automatic daily sync* below for how the scheduled run actually happens.
 
 ## Manual trigger
 
@@ -91,9 +93,49 @@ Response (also logged for the cron run):
 3. Upsert into `site_inventory_staging` keyed on `source_url`:
    new → `status='new'`; changed price/mileage/VIN/title → `'updated'`;
    otherwise just bump `last_seen`.
-4. Rows whose `source_url` was not seen this crawl → `'removed_from_site'`
+4. Rows whose `source_url` is **not in the sitemap** → `'removed_from_site'`
    (candidates to mark sold), **except** rows a human already set to
    `imported` or `ignored` — those decisions are never overwritten.
+
+## Removal safety (read before touching `markRemoved`)
+
+Removal is decided from the **sitemap**, never from crawl success. This is
+load-bearing: the site sporadically 403s detail pages (Cloudflare "Just a
+moment…" — one observed pass had 12/50 blocked). An earlier version added URLs
+to the `seen` set *after* a successful fetch, so a partially-blocked run marked
+every blocked-but-in-stock vehicle as removed. Unattended, that silently wipes
+live inventory. Two guards now exist:
+
+- **Empty sitemap → abort.** 0 `/inventory/` URLs (i.e. the sitemap itself got
+  challenged) throws before any write.
+- **Mass-disappearance guard.** If >40% of active rows (and more than 3) vanish
+  at once, removal is skipped entirely and reported via `removal_skipped` in
+  the summary — a human looks instead. Normal churn (a car or two sold) is far
+  below the threshold and flows through.
+
+Regression tests for all four cases live in the commit that introduced them;
+re-run them if you change this logic.
+
+## Automatic daily sync (how it actually runs today)
+
+The **deployed Worker cannot crawl** — Cloudflare blocks Cloudflare Workers' IP
+space, so every fetch 403s. The cron in `wrangler.toml` is also disabled (the
+account is at the free-plan 5-trigger cap). Automation therefore runs **on
+Franco's PC**, which the site serves normally:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\sync-setup-auto.ps1
+```
+
+One-time. It stores the service-role key encrypted with Windows DPAPI at
+`%LOCALAPPDATA%\AutoCoreP1\sync-key.dat` (bound to that user + machine, never
+in the repo) and registers a daily Scheduled Task running
+`scripts\site-sync-auto.ps1`, which reuses this Worker's `runSync`. Log:
+`%LOCALAPPDATA%\AutoCoreP1\sync.log`.
+
+This Worker stays the single source of the sync logic — fixing it here fixes
+the scheduled job too. If the dealer ever allowlists our User-Agent, the Worker
+can crawl directly and the cron becomes viable again.
 
 ## Maintenance note
 

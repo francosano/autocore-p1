@@ -55,7 +55,15 @@ export async function runSync(env) {
   const dry = String(env.DRY_RUN || '') === '1';
 
   const urls = await fetchSitemapUrls(env.SITEMAP_URL, ua);
-  const seen = new Set();
+  // The SITEMAP is the authoritative list of what the dealer has on the site,
+  // so "removed" is decided from it — never from crawl success. The site
+  // sporadically 403s detail pages (Cloudflare "Just a moment..."); deciding
+  // removal from parsed pages would mark in-stock vehicles as removed on any
+  // partially-blocked run (observed 12/50 blocked in one pass).
+  if (urls.length === 0) {
+    throw new Error('sitemap devolvio 0 URLs de /inventory/ — abortando sin marcar removidos (posible bloqueo de Cloudflare)');
+  }
+  const seen = new Set(urls.map(normalizeUrl));
   let created = 0, updated = 0, unchanged = 0, failed = 0, parsed = 0;
 
   for (const loc of urls) {
@@ -76,7 +84,6 @@ export async function runSync(env) {
       } else {
         console.log('[dry]', listing.titulo, '| $' + listing.precio_usd, '|', listing.millas, 'mi |', listing.vin, '|', listing.fotos.length, 'fotos');
       }
-      seen.add(normalizeUrl(loc));
     } catch (e) {
       failed++;
       console.log('[sync] failed', loc, String(e && e.message || e));
@@ -86,9 +93,12 @@ export async function runSync(env) {
 
   // Mark rows that vanished from the sitemap as removed_from_site (only those
   // not already imported/ignored — we don't resurrect human decisions).
-  const removed = dry ? 0 : await markRemoved(env, [...seen]);
+  const removal = dry ? { removed: 0, skipped: null } : await markRemoved(env, [...seen]);
 
-  return { total: urls.length, parsed, created, updated, unchanged, failed, removed, dry_run: dry };
+  return {
+    total: urls.length, parsed, created, updated, unchanged, failed,
+    removed: removal.removed, removal_skipped: removal.skipped, dry_run: dry,
+  };
 }
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
@@ -277,22 +287,43 @@ async function upsertStaging(env, listing) {
   return changed ? 'updated' : 'unchanged';
 }
 
-// Flag staging rows whose source_url was NOT seen in this crawl.
+// Flag staging rows whose source_url is NOT in the sitemap (i.e. the dealer
+// took the vehicle off the site). Returns { removed, skipped }.
+//
+// SAFETY GUARD: this runs unattended on a schedule, so a degenerate sitemap
+// (Cloudflare challenge page, a truncated or paginated feed) must never mass-
+// mark live inventory as removed. If the candidate count exceeds
+// REMOVAL_MAX_PCT of active rows and more than REMOVAL_MIN_FLOOR rows, we skip
+// removal entirely and report why — a human looks instead. Normal churn (a car
+// or two sold) is far below the threshold and flows through untouched.
+const REMOVAL_MIN_FLOOR = 3;   // always allow small, normal removals
+const REMOVAL_MAX_PCT = 0.40;  // >40% of active rows disappearing = suspicious
+
 async function markRemoved(env, seenUrls) {
   const rows = await sb(env, 'site_inventory_staging?select=id,source_url,status', { method: 'GET' });
   const seen = new Set(seenUrls);
+  const eligible = rows.filter(
+    (r) => r.status !== 'imported' && r.status !== 'ignored' && r.status !== 'removed_from_site'
+  );
+  const candidates = eligible.filter((r) => !seen.has(r.source_url));
+
+  if (candidates.length > REMOVAL_MIN_FLOOR && candidates.length > eligible.length * REMOVAL_MAX_PCT) {
+    const skipped = `${candidates.length}/${eligible.length} filas desaparecieron del sitemap (>${Math.round(REMOVAL_MAX_PCT * 100)}%) — no se marco ninguna como removida. Revisa el sitio/sitemap manualmente.`;
+    console.log('[sync] REMOVAL SKIPPED —', skipped);
+    return { removed: 0, skipped };
+  }
+
   let removed = 0;
-  for (const r of rows) {
-    if (seen.has(r.source_url)) continue;
-    if (r.status === 'imported' || r.status === 'ignored' || r.status === 'removed_from_site') continue;
+  for (const r of candidates) {
     await sb(env, `site_inventory_staging?id=eq.${r.id}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({ status: 'removed_from_site', last_seen: new Date().toISOString() }),
     });
     removed++;
+    console.log('[sync] removido del sitio:', r.source_url);
   }
-  return removed;
+  return { removed, skipped: null };
 }
 
 async function sb(env, pathAndQuery, init) {
