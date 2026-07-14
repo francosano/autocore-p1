@@ -54,13 +54,19 @@ powershell -ExecutionPolicy Bypass -File scripts\site-sync-local.ps1 -Fotos
 ```
 
 - Baja la galería completa de **todos** los vehículos del sitio a
-  `autocore-p1\fotos\`, una carpeta por vehículo (ej.
-  `2022-HYUNDAI-TUCSON_D057217\01.jpg, 02.jpg, ...`) y abre la carpeta al
-  terminar. No necesita ninguna clave.
+  `autocore-p1\fotos\`, **una carpeta por vehículo nombrada por número de
+  stock** (ej. `D057217_2022-HYUNDAI-TUCSON\01.jpg, 02.jpg, ...`). El stock va
+  primero: es la clave única del dealer (los títulos se repiten — hay tres
+  "FORD TRANSIT 250 CARGO VAN" — los stocks no), así las carpetas quedan
+  ordenadas por stock. Abre la carpeta al terminar. No necesita ninguna clave.
 - Re-ejecutar solo baja lo nuevo (lo ya descargado se salta). Tarda unos
   minutos la primera vez.
-- Al publicar en Facebook: botón de fotos → navega a la carpeta del vehículo →
-  selecciona todas → listo.
+- Al publicar en Facebook: botón de fotos → navega a la carpeta del vehículo
+  (búscala por su número de stock) → selecciona todas → listo.
+- **Si falta algún vehículo:** el sitio del dealer a veces responde con la
+  pantalla "Just a moment..." de Cloudflare y ese vehículo se salta (verás
+  `"failed"` en el resumen). No es un error tuyo — vuelve a correr el comando
+  y lo toma; lo ya descargado no se vuelve a bajar.
 
 ### Generar la descripción (lista para pegar)
 

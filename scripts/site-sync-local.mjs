@@ -62,9 +62,15 @@ const dry = process.argv.includes('--dry');
 const fotosMode = process.argv.includes('--fotos');
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-// ── --fotos: download every listing's photo gallery to .\fotos\<vehiculo>\ ──
+// ── --fotos: download every listing's photo gallery to .\fotos\<STOCK>_<vehiculo>\ ──
 // Crawls the public site only (no Supabase, no keys needed). Skips photos
 // already on disk, so re-runs are fast and only fetch what's new.
+// Folders are named STOCK FIRST because the stock number is the dealer's
+// unique key: titles collide (three "FORD TRANSIT 250 CARGO VAN"), stock
+// numbers never do, and the folders sort by stock. The stock number is the
+// last segment of the listing URL (…/inventory/ford/explorer/dc75018/ →
+// DC75018). The title is kept after it so a folder is still readable at a
+// glance when picking photos to upload.
 const FOTOS_DIR = join(process.cwd(), 'fotos');
 const safeName = (s) => String(s || 'vehiculo').replace(/[^A-Za-z0-9 _-]+/g, '').trim().replace(/\s+/g, '-').slice(0, 60);
 const stockFromUrl = (u) => (String(u).replace(/\/+$/, '').split('/').pop() || 'sin-stock').toUpperCase();
@@ -75,7 +81,7 @@ function downloadPhoto(url, filePath) {
 }
 
 async function saveListingPhotos(listing) {
-  const folderName = `${safeName(listing.titulo)}_${stockFromUrl(listing.source_url)}`;
+  const folderName = `${stockFromUrl(listing.source_url)}_${safeName(listing.titulo)}`;
   const dir = join(FOTOS_DIR, folderName);
   mkdirSync(dir, { recursive: true });
   const fotos = Array.isArray(listing.fotos) ? listing.fotos : [];
